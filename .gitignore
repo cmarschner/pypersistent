@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+venv/
+*.egg
+
+# C/C++
+*.o
+*.a
+*.dylib
+*.so
+*.out
+flagcheck.cpp
+flagcheck.o
+
+# Build artifacts
+*.cpython-*.so
+build/
+*.dSYM/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Performance test outputs
+perftest*.txt
+compare_perf.py
+analyze_increfs.py
+demo_pythonic.py
+
+# macOS
+.DS_Store

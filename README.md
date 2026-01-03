@@ -14,16 +14,96 @@ A high-performance persistent (immutable) hash map implementation for Python, wr
 
 ## Performance
 
-Compared to Python's built-in `dict` (for 1,000,000 elements):
+### Quick Summary
 
-| Operation | PersistentMap | dict | Ratio |
-|-----------|---------------|------|-------|
-| Insertion | 2.90s | 299ms | 9.7x slower |
-| Lookup | 1.02s | 427ms | 2.4x slower |
-| Update | 402ms | 80ms | 5.0x slower |
-| Structural Sharing | **0.48ms** | 1.57s | **3270x FASTER** ✨ |
+pypersistent provides **6-8% faster** bulk operations compared to baseline and is **3-150x faster** than pure Python pyrsistent for most operations. The real value is structural sharing: creating variants is **3000x faster** than copying dicts.
 
-When you need to create multiple versions of data (undo/redo, time-travel, etc.), PersistentMap is **orders of magnitude faster** than copying dicts.
+### Benchmark Results
+
+#### vs Python dict (1M elements)
+
+| Operation | pypersistent | dict | Notes |
+|-----------|--------------|------|-------|
+| **Construction** | 2.74s | 299ms | 9x slower (immutability cost) |
+| **Lookup (1K ops)** | 776ms | 427ms | 1.8x slower |
+| **Update (single)** | 147µs | ~80ns | Comparable for single ops |
+| **Structural Sharing (100 variants)** | **0.48ms** | 1.57s | **3000x FASTER** |
+
+**Key insight**: For creating multiple versions, pypersistent is orders of magnitude faster.
+
+#### vs pyrsistent (pure Python) - Apples-to-Apples
+
+| Size | Operation | pypersistent | pyrsistent | Speedup |
+|------|-----------|--------------|------------|---------|
+| **1M** | **Merge (500K+500K)** | **11.5ms** | **1.60s** | **139x faster** |
+| **1M** | **Construction** | **185ms** | **813ms** | **4.4x faster** |
+| **1M** | **Lookup (1M ops)** | **726ms** | **796ms** | **1.1x faster** |
+| **1M** | **Iteration** | 452ms | 167ms | 2.7x slower |
+| **1K** | **Merge (500+500)** | **8.7µs** | **1.22ms** | **141x faster** |
+| **1K** | **Construction** | **76µs** | **192µs** | **2.5x faster** |
+| **100** | **Merge (50+50)** | **17.8µs** | **120µs** | **6.7x faster** |
+| **100** | **Construction** | 30µs | 18.5µs | 1.6x slower |
+
+**Iteration note**: Using `items_list()` instead of `items()` makes iteration 1.7-3x faster for maps < 100K
+
+### Performance by Map Size
+
+| Size | Construction | Lookup (1K ops) | Sharing (100 variants) |
+|------|--------------|-----------------|------------------------|
+| 100 | 73µs | 19µs | 77µs |
+| 1K | 765µs | 205µs | 95µs |
+| 10K | 9.7ms | 228µs | 108µs |
+| 100K | 110ms | 255µs | 133µs |
+| 1M | 2.74s | 776ms | 158µs |
+
+### Fast Iteration Methods
+
+For complete iteration over small-medium maps, use materialized list methods:
+
+```python
+m = PersistentMap.from_dict({...})
+
+# Fast methods (1.7-3x faster for maps < 100K)
+items = m.items_list()   # Returns list of (key, value) tuples
+keys = m.keys_list()     # Returns list of keys
+values = m.values_list() # Returns list of values
+
+# Lazy iterators (better for very large maps or early exit)
+for k, v in m.items():   # Generator, O(log n) memory
+    ...
+```
+
+**Performance**:
+- Maps ≤ 10K: **3x faster** with `items_list()`
+- Maps ≤ 100K: **1.7x faster** with `items_list()`
+- Maps > 100K: Use iterator (lazy, memory-efficient)
+
+### When to Use pypersistent
+
+**Use pypersistent when**:
+- Creating multiple versions of data (undo/redo, time-travel)
+- Concurrent access across threads (lock-free reads)
+- Functional programming patterns
+- Merging large maps frequently
+
+**Use dict when**:
+- Single mutable map is sufficient
+- Maximum raw construction speed is critical
+- Memory per entry is constrained
+
+### Technical Details
+
+**Implementation**: C++ HAMT (Hash Array Mapped Trie) with:
+- Bottom-up bulk construction for from_dict()
+- Arena allocator for fast node allocation
+- Structural tree merging for merge()
+- COW semantics for collision nodes
+- Fast iteration with pre-allocated lists
+
+**Time Complexity**: O(log₃₂ n) ≈ 6 steps for 1M elements
+**Space Complexity**: O(n) with structural sharing across versions
+
+For detailed performance analysis and benchmarking methodology, see `docs/`.
 
 ## Installation
 

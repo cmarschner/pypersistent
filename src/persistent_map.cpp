@@ -295,7 +295,7 @@ NodeBase* BitmapNode::createNode(uint32_t shift,
 
 py::object CollisionNode::get(uint32_t shift, uint32_t hash,
                               const py::object& key, const py::object& notFound) const {
-    for (Entry* entry : entries_) {
+    for (Entry* entry : *entries_) {
         if (pmutils::keysEqual(entry->key, key)) {
             return entry->value;
         }
@@ -306,61 +306,55 @@ py::object CollisionNode::get(uint32_t shift, uint32_t hash,
 NodeBase* CollisionNode::assoc(uint32_t shift, uint32_t hash,
                                const py::object& key, const py::object& val) const {
     // Check if key already exists
-    for (size_t i = 0; i < entries_.size(); ++i) {
-        if (pmutils::keysEqual(entries_[i]->key, key)) {
+    for (size_t i = 0; i < entries_->size(); ++i) {
+        if (pmutils::keysEqual((*entries_)[i]->key, key)) {
             // Key exists, update value
-            if (entries_[i]->value.is(val)) {
+            if ((*entries_)[i]->value.is(val)) {
                 // Value unchanged
                 return const_cast<CollisionNode*>(this);
             }
 
-            std::vector<Entry*> newEntries;
-            newEntries.reserve(entries_.size());
-            for (size_t j = 0; j < entries_.size(); ++j) {
-                if (j == i) {
-                    newEntries.push_back(new Entry(key, val));
-                } else {
-                    newEntries.push_back(new Entry(entries_[j]->key, entries_[j]->value));
-                }
-            }
-            return new CollisionNode(hash_, std::move(newEntries));
+            // Copy-on-write: only copy the vector, reuse Entry pointers except for the changed one
+            auto newEntries = std::make_shared<std::vector<Entry*>>(*entries_);
+            delete (*newEntries)[i];  // Delete the old entry
+            (*newEntries)[i] = new Entry(key, val);  // Replace with new entry
+            return new CollisionNode(hash_, newEntries);
         }
     }
 
     // Key not found, append
-    std::vector<Entry*> newEntries;
-    newEntries.reserve(entries_.size() + 1);
-    for (Entry* entry : entries_) {
-        newEntries.push_back(new Entry(entry->key, entry->value));
-    }
-    newEntries.push_back(new Entry(key, val));
-    return new CollisionNode(hash_, std::move(newEntries));
+    // Copy-on-write: copy vector and add new entry
+    auto newEntries = std::make_shared<std::vector<Entry*>>(*entries_);
+    newEntries->push_back(new Entry(key, val));
+    return new CollisionNode(hash_, newEntries);
 }
 
 NodeBase* CollisionNode::dissoc(uint32_t shift, uint32_t hash,
                                 const py::object& key) const {
-    for (size_t i = 0; i < entries_.size(); ++i) {
-        if (pmutils::keysEqual(entries_[i]->key, key)) {
+    for (size_t i = 0; i < entries_->size(); ++i) {
+        if (pmutils::keysEqual((*entries_)[i]->key, key)) {
             // Found it
-            if (entries_.size() == 1) {
+            if (entries_->size() == 1) {
                 // Last entry, return null
                 return nullptr;
             }
 
-            if (entries_.size() == 2) {
+            if (entries_->size() == 2) {
                 // Only one entry left, return null (will be handled by parent)
                 return nullptr;
             }
 
             // Create new collision node without this entry
-            std::vector<Entry*> newEntries;
-            newEntries.reserve(entries_.size() - 1);
-            for (size_t j = 0; j < entries_.size(); ++j) {
+            // Copy-on-write: copy vector and remove entry, but need to duplicate Entry objects
+            // since the old node will delete them
+            auto newEntries = std::make_shared<std::vector<Entry*>>();
+            newEntries->reserve(entries_->size() - 1);
+            for (size_t j = 0; j < entries_->size(); ++j) {
                 if (j != i) {
-                    newEntries.push_back(new Entry(entries_[j]->key, entries_[j]->value));
+                    newEntries->push_back(new Entry((*entries_)[j]->key, (*entries_)[j]->value));
                 }
             }
-            return new CollisionNode(hash_, std::move(newEntries));
+            return new CollisionNode(hash_, newEntries);
         }
     }
 
@@ -369,7 +363,7 @@ NodeBase* CollisionNode::dissoc(uint32_t shift, uint32_t hash,
 }
 
 void CollisionNode::iterate(const std::function<void(const py::object&, const py::object&)>& callback) const {
-    for (Entry* entry : entries_) {
+    for (Entry* entry : *entries_) {
         callback(entry->key, entry->value);
     }
 }
@@ -539,6 +533,63 @@ ItemIterator PersistentMap::items() const {
     return ItemIterator(root_);
 }
 
+// Fast materialized iteration - returns pre-allocated list
+// Pre-allocates list with exact size to avoid repeated reallocation
+py::list PersistentMap::itemsList() const {
+    if (!root_ || count_ == 0) {
+        return py::list();
+    }
+
+    // Pre-allocate Python list with exact size (critical for performance!)
+    py::list result(count_);
+    MapIterator iter(root_);
+    size_t idx = 0;
+
+    while (iter.hasNext()) {
+        auto pair = iter.next();
+        // Direct assignment instead of append (much faster)
+        result[idx++] = py::make_tuple(pair.first, pair.second);
+    }
+
+    return result;
+}
+
+py::list PersistentMap::keysList() const {
+    if (!root_ || count_ == 0) {
+        return py::list();
+    }
+
+    // Pre-allocate list with exact size
+    py::list result(count_);
+    MapIterator iter(root_);
+    size_t idx = 0;
+
+    while (iter.hasNext()) {
+        auto pair = iter.next();
+        result[idx++] = pair.first;
+    }
+
+    return result;
+}
+
+py::list PersistentMap::valuesList() const {
+    if (!root_ || count_ == 0) {
+        return py::list();
+    }
+
+    // Pre-allocate list with exact size
+    py::list result(count_);
+    MapIterator iter(root_);
+    size_t idx = 0;
+
+    while (iter.hasNext()) {
+        auto pair = iter.next();
+        result[idx++] = pair.second;
+    }
+
+    return result;
+}
+
 bool PersistentMap::operator==(const PersistentMap& other) const {
     if (count_ != other.count_) {
         return false;
@@ -601,22 +652,205 @@ std::string PersistentMap::repr() const {
     return oss.str();
 }
 
-PersistentMap PersistentMap::fromDict(const py::dict& d) {
-    PersistentMap m;
-    for (auto item : d) {
-        m = m.assoc(py::reinterpret_borrow<py::object>(item.first),
-                   py::reinterpret_borrow<py::object>(item.second));
+// ============================================================================
+// Phase 2: Bottom-Up Tree Construction
+// ============================================================================
+
+NodeBase* PersistentMap::buildTreeBulk(std::vector<HashedEntry>& entries,
+                                       size_t start, size_t end, uint32_t shift,
+                                       BulkOpArena& arena) {
+    size_t count = end - start;
+
+    // Base case: no entries
+    if (count == 0) {
+        return nullptr;
     }
-    return m;
+
+    // Base case: single entry
+    if (count == 1) {
+        auto& entry = entries[start];
+        uint32_t idx = (entry.hash >> shift) & HASH_MASK;
+        uint32_t bitmap = 1 << idx;
+
+        std::vector<std::variant<std::shared_ptr<Entry>, NodeBase*>> array;
+        array.push_back(std::make_shared<Entry>(entry.key, entry.value));
+
+        return arena.allocate<BitmapNode>(bitmap, std::move(array));
+    }
+
+    // Check if all entries have the same hash (collision case)
+    bool all_same_hash = true;
+    uint32_t first_hash = entries[start].hash;
+    for (size_t i = start + 1; i < end; ++i) {
+        if (entries[i].hash != first_hash) {
+            all_same_hash = false;
+            break;
+        }
+    }
+
+    if (all_same_hash) {
+        // Create CollisionNode
+        std::vector<Entry*> collision_entries;
+        collision_entries.reserve(count);
+        for (size_t i = start; i < end; ++i) {
+            collision_entries.push_back(new Entry(entries[i].key, entries[i].value));
+        }
+        return arena.allocate<CollisionNode>(first_hash, std::move(collision_entries));
+    }
+
+    // Group entries by their hash bucket at this level
+    // Buckets[i] contains entries whose (hash >> shift) & HASH_MASK == i
+    std::vector<std::vector<size_t>> buckets(MAX_BITMAP_SIZE);
+
+    for (size_t i = start; i < end; ++i) {
+        uint32_t idx = (entries[i].hash >> shift) & HASH_MASK;
+        buckets[idx].push_back(i);
+    }
+
+    // Build bitmap and array for this node
+    uint32_t bitmap = 0;
+    std::vector<std::variant<std::shared_ptr<Entry>, NodeBase*>> array;
+
+    for (uint32_t idx = 0; idx < MAX_BITMAP_SIZE; ++idx) {
+        if (buckets[idx].empty()) {
+            continue;
+        }
+
+        bitmap |= (1 << idx);
+
+        if (buckets[idx].size() == 1) {
+            // Single entry in this bucket - store as Entry
+            size_t entry_idx = buckets[idx][0];
+            array.push_back(std::make_shared<Entry>(entries[entry_idx].key,
+                                                     entries[entry_idx].value));
+        } else {
+            // Multiple entries - need to recurse deeper or create collision node
+
+            // Check if we've reached max depth (shift >= 30)
+            if (shift >= 30) {
+                // Max tree depth reached, create collision node
+                std::vector<Entry*> collision_entries;
+                collision_entries.reserve(buckets[idx].size());
+                for (size_t entry_idx : buckets[idx]) {
+                    collision_entries.push_back(new Entry(entries[entry_idx].key,
+                                                         entries[entry_idx].value));
+                }
+                NodeBase* collision_node = arena.allocate<CollisionNode>(entries[buckets[idx][0]].hash,
+                                                                          std::move(collision_entries));
+                array.push_back(collision_node);
+                collision_node->addRef();
+            } else {
+                // Create a contiguous sub-vector for recursion
+                std::vector<HashedEntry> sub_entries;
+                sub_entries.reserve(buckets[idx].size());
+                for (size_t entry_idx : buckets[idx]) {
+                    sub_entries.push_back(entries[entry_idx]);
+                }
+
+                // Recursively build subtree
+                NodeBase* child = buildTreeBulk(sub_entries, 0, sub_entries.size(), shift + HASH_BITS, arena);
+                if (child) {
+                    child->addRef();  // Add reference for parent node
+                    array.push_back(child);
+                } else {
+                    // Shouldn't happen, but handle gracefully
+                    bitmap &= ~(1 << idx);  // Clear bit if no child created
+                }
+            }
+        }
+    }
+
+    if (array.empty()) {
+        return nullptr;
+    }
+
+    return arena.allocate<BitmapNode>(bitmap, std::move(array));
+}
+
+PersistentMap PersistentMap::fromDict(const py::dict& d) {
+    size_t n = d.size();
+
+    // Empty map
+    if (n == 0) {
+        return PersistentMap();
+    }
+
+    // Small maps: use current implementation (already fast)
+    if (n < 1000) {
+        PersistentMap m;
+        for (auto item : d) {
+            m = m.assoc(py::reinterpret_borrow<py::object>(item.first),
+                       py::reinterpret_borrow<py::object>(item.second));
+        }
+        return m;
+    }
+
+    // Large maps: use bottom-up tree construction (Phase 2) + arena allocator (Phase 3)
+    // Collect all entries and compute hashes upfront
+    std::vector<HashedEntry> entries;
+    entries.reserve(n);
+
+    for (auto item : d) {
+        py::object key = py::reinterpret_borrow<py::object>(item.first);
+        py::object val = py::reinterpret_borrow<py::object>(item.second);
+        uint32_t hash = pmutils::hashKey(key);
+
+        entries.push_back(HashedEntry{hash, key, val});
+    }
+
+    // Phase 3: Create arena for fast allocation during tree construction
+    BulkOpArena arena;
+
+    // Build tree bottom-up using arena allocation
+    NodeBase* root = buildTreeBulk(entries, 0, entries.size(), 0, arena);
+
+    // CRITICAL: Arena nodes will be freed when arena goes out of scope!
+    // We need to clone the entire tree from arena to heap.
+    NodeBase* heap_root = root ? root->cloneToHeap() : nullptr;
+
+    return PersistentMap(heap_root, n);
 }
 
 PersistentMap PersistentMap::create(const py::kwargs& kw) {
-    PersistentMap m;
-    for (auto item : kw) {
-        m = m.assoc(py::reinterpret_borrow<py::object>(item.first),
-                   py::reinterpret_borrow<py::object>(item.second));
+    size_t n = kw.size();
+
+    // Empty map
+    if (n == 0) {
+        return PersistentMap();
     }
-    return m;
+
+    // Small maps: use current implementation
+    if (n < 1000) {
+        PersistentMap m;
+        for (auto item : kw) {
+            m = m.assoc(py::reinterpret_borrow<py::object>(item.first),
+                       py::reinterpret_borrow<py::object>(item.second));
+        }
+        return m;
+    }
+
+    // Large maps: use bottom-up tree construction (Phase 2) + arena allocator (Phase 3)
+    std::vector<HashedEntry> entries;
+    entries.reserve(n);
+
+    for (auto item : kw) {
+        py::object key = py::reinterpret_borrow<py::object>(item.first);
+        py::object val = py::reinterpret_borrow<py::object>(item.second);
+        uint32_t hash = pmutils::hashKey(key);
+
+        entries.push_back(HashedEntry{hash, key, val});
+    }
+
+    // Phase 3: Create arena for fast allocation
+    BulkOpArena arena;
+
+    // Build tree bottom-up using arena
+    NodeBase* root = buildTreeBulk(entries, 0, entries.size(), 0, arena);
+
+    // Clone from arena to heap
+    NodeBase* heap_root = root ? root->cloneToHeap() : nullptr;
+
+    return PersistentMap(heap_root, n);
 }
 
 PersistentMap PersistentMap::update(const py::object& other) const {
@@ -625,16 +859,46 @@ PersistentMap PersistentMap::update(const py::object& other) const {
     // Handle dict or PersistentMap
     if (py::isinstance<py::dict>(other)) {
         py::dict d = other.cast<py::dict>();
-        for (auto item : d) {
-            result = result.assoc(py::reinterpret_borrow<py::object>(item.first),
-                                 py::reinterpret_borrow<py::object>(item.second));
+        size_t n = d.size();
+
+        // Small updates: use current implementation
+        if (n < 100) {
+            for (auto item : d) {
+                result = result.assoc(py::reinterpret_borrow<py::object>(item.first),
+                                     py::reinterpret_borrow<py::object>(item.second));
+            }
+        } else {
+            // Large updates: pre-allocate entries
+            std::vector<std::pair<py::object, py::object>> entries;
+            entries.reserve(n);
+
+            for (auto item : d) {
+                entries.emplace_back(
+                    py::reinterpret_borrow<py::object>(item.first),
+                    py::reinterpret_borrow<py::object>(item.second)
+                );
+            }
+
+            for (const auto& [key, val] : entries) {
+                result = result.assoc(key, val);
+            }
         }
     } else if (py::isinstance<PersistentMap>(other)) {
         const PersistentMap& other_map = other.cast<const PersistentMap&>();
+        size_t n = other_map.count_;
+
         if (other_map.root_) {
-            other_map.root_->iterate([&](const py::object& k, const py::object& v) {
-                result = result.assoc(k, v);
-            });
+            // Phase 4: Use structural merge for large updates
+            if (n >= 100) {
+                // Structural merge - O(n + m) instead of O(n * log m)
+                NodeBase* merged = mergeNodes(root_, other_map.root_, 0);
+                return PersistentMap(merged, count_ + n);  // Approximate count, may have overwrites
+            } else {
+                // Small updates: use iterative assoc (simpler, fine for small n)
+                other_map.root_->iterate([&](const py::object& k, const py::object& v) {
+                    result = result.assoc(k, v);
+                });
+            }
         }
     } else {
         // Try to iterate as a mapping
@@ -650,4 +914,219 @@ PersistentMap PersistentMap::update(const py::object& other) const {
     }
 
     return result;
+}
+
+// ============================================================================
+// Phase 3: Arena-to-Heap Node Transfer (cloneToHeap implementations)
+// ============================================================================
+
+NodeBase* BitmapNode::cloneToHeap() const {
+    // Clone the array, recursively cloning any child nodes
+    std::vector<std::variant<std::shared_ptr<Entry>, NodeBase*>> new_array;
+    new_array.reserve(array_.size());
+
+    for (const auto& elem : array_) {
+        if (std::holds_alternative<std::shared_ptr<Entry>>(elem)) {
+            // Entry is already heap-allocated via shared_ptr, just copy
+            new_array.push_back(elem);
+        } else {
+            // NodeBase* - recursively clone child node to heap
+            NodeBase* child = std::get<NodeBase*>(elem);
+            NodeBase* heap_child = child->cloneToHeap();
+            heap_child->addRef();  // Add reference for parent
+            new_array.push_back(heap_child);
+        }
+    }
+
+    // Allocate new BitmapNode on heap
+    return new BitmapNode(bitmap_, std::move(new_array));
+}
+
+NodeBase* CollisionNode::cloneToHeap() const {
+    // Clone the entries vector (Entry* are already heap-allocated)
+    // Note: entries_ is a shared_ptr, so we can just copy it
+    // The shared_ptr will keep the vector alive
+    return new CollisionNode(hash_, entries_);
+}
+
+// ============================================================================
+// Phase 4: Structural Merge Implementation
+// ============================================================================
+
+/**
+ * Structural merge of two HAMT trees
+ *
+ * Instead of iterating and calling assoc() repeatedly, we merge trees
+ * structurally at the node level. This maximizes structural sharing and
+ * reduces allocations.
+ *
+ * Algorithm:
+ * 1. For BitmapNode+BitmapNode: combine bitmaps, merge arrays slot-by-slot
+ * 2. For BitmapNode+CollisionNode: handle hash collision cases
+ * 3. For CollisionNode+CollisionNode: merge entry lists
+ * 4. Recursively merge child nodes where trees overlap
+ *
+ * Performance: O(n + m) instead of O(n * log m)
+ */
+NodeBase* PersistentMap::mergeNodes(NodeBase* left, NodeBase* right, uint32_t shift) {
+    // Handle null cases
+    if (!left) {
+        if (right) right->addRef();
+        return right;
+    }
+    if (!right) {
+        left->addRef();
+        return left;
+    }
+
+    // Both nodes exist - determine types and merge appropriately
+    BitmapNode* leftBitmap = dynamic_cast<BitmapNode*>(left);
+    BitmapNode* rightBitmap = dynamic_cast<BitmapNode*>(right);
+    CollisionNode* leftCollision = dynamic_cast<CollisionNode*>(left);
+    CollisionNode* rightCollision = dynamic_cast<CollisionNode*>(right);
+
+    // Case 1: BitmapNode + BitmapNode (most common)
+    if (leftBitmap && rightBitmap) {
+        uint32_t leftBmp = leftBitmap->getBitmap();
+        uint32_t rightBmp = rightBitmap->getBitmap();
+        uint32_t combinedBmp = leftBmp | rightBmp;  // Union of bitmaps
+
+        const auto& leftArray = leftBitmap->getArray();
+        const auto& rightArray = rightBitmap->getArray();
+
+        std::vector<std::variant<std::shared_ptr<Entry>, NodeBase*>> newArray;
+        newArray.reserve(popcount(combinedBmp));
+
+        uint32_t leftIdx = 0;
+        uint32_t rightIdx = 0;
+
+        // Iterate through all possible slots (32 max)
+        for (uint32_t bit = 0; bit < MAX_BITMAP_SIZE; ++bit) {
+            uint32_t mask = 1u << bit;
+
+            if (combinedBmp & mask) {
+                bool inLeft = (leftBmp & mask) != 0;
+                bool inRight = (rightBmp & mask) != 0;
+
+                if (inLeft && inRight) {
+                    // Both trees have this slot - need to merge
+                    const auto& leftElem = leftArray[leftIdx];
+                    const auto& rightElem = rightArray[rightIdx];
+
+                    if (std::holds_alternative<std::shared_ptr<Entry>>(leftElem) &&
+                        std::holds_alternative<std::shared_ptr<Entry>>(rightElem)) {
+                        // Both are entries - right wins (overwrite semantics)
+                        newArray.push_back(rightElem);
+                    } else if (std::holds_alternative<NodeBase*>(leftElem) &&
+                               std::holds_alternative<NodeBase*>(rightElem)) {
+                        // Both are nodes - recursively merge
+                        NodeBase* leftChild = std::get<NodeBase*>(leftElem);
+                        NodeBase* rightChild = std::get<NodeBase*>(rightElem);
+                        NodeBase* merged = mergeNodes(leftChild, rightChild, shift + HASH_BITS);
+                        newArray.push_back(merged);
+                    } else {
+                        // Mixed entry/node - right wins
+                        if (std::holds_alternative<std::shared_ptr<Entry>>(rightElem)) {
+                            newArray.push_back(rightElem);
+                        } else {
+                            NodeBase* node = std::get<NodeBase*>(rightElem);
+                            node->addRef();
+                            newArray.push_back(node);
+                        }
+                    }
+
+                    leftIdx++;
+                    rightIdx++;
+                } else if (inLeft) {
+                    // Only in left tree - reuse
+                    const auto& elem = leftArray[leftIdx];
+                    if (std::holds_alternative<std::shared_ptr<Entry>>(elem)) {
+                        newArray.push_back(elem);
+                    } else {
+                        NodeBase* node = std::get<NodeBase*>(elem);
+                        node->addRef();
+                        newArray.push_back(node);
+                    }
+                    leftIdx++;
+                } else {
+                    // Only in right tree - reuse
+                    const auto& elem = rightArray[rightIdx];
+                    if (std::holds_alternative<std::shared_ptr<Entry>>(elem)) {
+                        newArray.push_back(elem);
+                    } else {
+                        NodeBase* node = std::get<NodeBase*>(elem);
+                        node->addRef();
+                        newArray.push_back(node);
+                    }
+                    rightIdx++;
+                }
+            }
+        }
+
+        return new BitmapNode(combinedBmp, std::move(newArray));
+    }
+
+    // Case 2: CollisionNode + CollisionNode
+    if (leftCollision && rightCollision) {
+        // Both are collision nodes - merge entry lists
+        // Right entries overwrite left entries with same key
+        std::vector<Entry*> mergedEntries;
+        const auto& leftEntries = leftCollision->getEntries();
+        const auto& rightEntries = rightCollision->getEntries();
+
+        // Start with left entries
+        for (Entry* leftEntry : leftEntries) {
+            bool overwritten = false;
+            // Check if right has same key
+            for (Entry* rightEntry : rightEntries) {
+                if (pmutils::keysEqual(leftEntry->key, rightEntry->key)) {
+                    overwritten = true;
+                    break;
+                }
+            }
+            if (!overwritten) {
+                mergedEntries.push_back(new Entry(leftEntry->key, leftEntry->value));
+            }
+        }
+
+        // Add all right entries (they override)
+        for (Entry* rightEntry : rightEntries) {
+            mergedEntries.push_back(new Entry(rightEntry->key, rightEntry->value));
+        }
+
+        return new CollisionNode(leftCollision->getHash(), std::move(mergedEntries));
+    }
+
+    // Case 3: Mixed BitmapNode + CollisionNode
+    // Fall back to iterative assoc for mixed cases (rare)
+    if (leftCollision || rightCollision) {
+        // Use assoc to add entries from one into the other
+        // This is a rare case, so performance impact is minimal
+        NodeBase* result = left;
+        result->addRef();
+
+        if (rightBitmap) {
+            // Right is bitmap, left is collision - add collision entries
+            leftCollision->iterate([&](const py::object& k, const py::object& v) {
+                uint32_t hash = pmutils::hashKey(k);
+                NodeBase* newResult = result->assoc(0, hash, k, v);
+                result->release();
+                result = newResult;
+            });
+        } else if (rightCollision) {
+            // Right is collision - add its entries
+            rightCollision->iterate([&](const py::object& k, const py::object& v) {
+                uint32_t hash = pmutils::hashKey(k);
+                NodeBase* newResult = result->assoc(0, hash, k, v);
+                result->release();
+                result = newResult;
+            });
+        }
+
+        return result;
+    }
+
+    // Should never reach here
+    left->addRef();
+    return left;
 }

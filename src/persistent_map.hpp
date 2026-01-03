@@ -9,6 +9,7 @@
 #include <functional>
 #include <cstdint>
 #include <string>
+#include "arena_allocator.hpp"
 
 namespace py = pybind11;
 
@@ -108,6 +109,9 @@ public:
                             const py::object& key) const = 0;
 
     virtual void iterate(const std::function<void(const py::object&, const py::object&)>& callback) const = 0;
+
+    // Clone node from arena to heap (deep copy for Phase 3 arena allocator)
+    virtual NodeBase* cloneToHeap() const = 0;
 };
 
 // BitmapNode: Main HAMT node using bitmap indexing
@@ -150,6 +154,8 @@ public:
 
     void iterate(const std::function<void(const py::object&, const py::object&)>& callback) const override;
 
+    NodeBase* cloneToHeap() const override;
+
     uint32_t getBitmap() const { return bitmap_; }
     const std::vector<std::variant<std::shared_ptr<Entry>, NodeBase*>>& getArray() const { return array_; }
 };
@@ -190,6 +196,8 @@ public:
                     const py::object& key) const override;
 
     void iterate(const std::function<void(const py::object&, const py::object&)>& callback) const override;
+
+    NodeBase* cloneToHeap() const override;
 
     uint32_t getHash() const { return hash_; }
     const std::vector<Entry*>& getEntries() const { return *entries_; }
@@ -267,7 +275,8 @@ private:
 
     // Bottom-up tree construction for bulk operations
     static NodeBase* buildTreeBulk(std::vector<HashedEntry>& entries,
-                                   size_t start, size_t end, uint32_t shift);
+                                   size_t start, size_t end, uint32_t shift,
+                                   BulkOpArena& arena);
 
 public:
     // Sentinel value for "not found"

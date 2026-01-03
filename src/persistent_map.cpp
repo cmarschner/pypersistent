@@ -600,7 +600,8 @@ std::string PersistentMap::repr() const {
 // ============================================================================
 
 NodeBase* PersistentMap::buildTreeBulk(std::vector<HashedEntry>& entries,
-                                       size_t start, size_t end, uint32_t shift) {
+                                       size_t start, size_t end, uint32_t shift,
+                                       BulkOpArena& arena) {
     size_t count = end - start;
 
     // Base case: no entries
@@ -617,7 +618,7 @@ NodeBase* PersistentMap::buildTreeBulk(std::vector<HashedEntry>& entries,
         std::vector<std::variant<std::shared_ptr<Entry>, NodeBase*>> array;
         array.push_back(std::make_shared<Entry>(entry.key, entry.value));
 
-        return new BitmapNode(bitmap, std::move(array));
+        return arena.allocate<BitmapNode>(bitmap, std::move(array));
     }
 
     // Check if all entries have the same hash (collision case)
@@ -637,7 +638,7 @@ NodeBase* PersistentMap::buildTreeBulk(std::vector<HashedEntry>& entries,
         for (size_t i = start; i < end; ++i) {
             collision_entries.push_back(new Entry(entries[i].key, entries[i].value));
         }
-        return new CollisionNode(first_hash, std::move(collision_entries));
+        return arena.allocate<CollisionNode>(first_hash, std::move(collision_entries));
     }
 
     // Group entries by their hash bucket at this level
@@ -677,8 +678,8 @@ NodeBase* PersistentMap::buildTreeBulk(std::vector<HashedEntry>& entries,
                     collision_entries.push_back(new Entry(entries[entry_idx].key,
                                                          entries[entry_idx].value));
                 }
-                NodeBase* collision_node = new CollisionNode(entries[buckets[idx][0]].hash,
-                                                             std::move(collision_entries));
+                NodeBase* collision_node = arena.allocate<CollisionNode>(entries[buckets[idx][0]].hash,
+                                                                          std::move(collision_entries));
                 array.push_back(collision_node);
                 collision_node->addRef();
             } else {
@@ -690,7 +691,7 @@ NodeBase* PersistentMap::buildTreeBulk(std::vector<HashedEntry>& entries,
                 }
 
                 // Recursively build subtree
-                NodeBase* child = buildTreeBulk(sub_entries, 0, sub_entries.size(), shift + HASH_BITS);
+                NodeBase* child = buildTreeBulk(sub_entries, 0, sub_entries.size(), shift + HASH_BITS, arena);
                 if (child) {
                     child->addRef();  // Add reference for parent node
                     array.push_back(child);
@@ -706,7 +707,7 @@ NodeBase* PersistentMap::buildTreeBulk(std::vector<HashedEntry>& entries,
         return nullptr;
     }
 
-    return new BitmapNode(bitmap, std::move(array));
+    return arena.allocate<BitmapNode>(bitmap, std::move(array));
 }
 
 PersistentMap PersistentMap::fromDict(const py::dict& d) {
@@ -727,7 +728,7 @@ PersistentMap PersistentMap::fromDict(const py::dict& d) {
         return m;
     }
 
-    // Large maps: use bottom-up tree construction (Phase 2)
+    // Large maps: use bottom-up tree construction (Phase 2) + arena allocator (Phase 3)
     // Collect all entries and compute hashes upfront
     std::vector<HashedEntry> entries;
     entries.reserve(n);
@@ -740,10 +741,17 @@ PersistentMap PersistentMap::fromDict(const py::dict& d) {
         entries.push_back(HashedEntry{hash, key, val});
     }
 
-    // Build tree bottom-up
-    NodeBase* root = buildTreeBulk(entries, 0, entries.size(), 0);
+    // Phase 3: Create arena for fast allocation during tree construction
+    BulkOpArena arena;
 
-    return PersistentMap(root, n);
+    // Build tree bottom-up using arena allocation
+    NodeBase* root = buildTreeBulk(entries, 0, entries.size(), 0, arena);
+
+    // CRITICAL: Arena nodes will be freed when arena goes out of scope!
+    // We need to clone the entire tree from arena to heap.
+    NodeBase* heap_root = root ? root->cloneToHeap() : nullptr;
+
+    return PersistentMap(heap_root, n);
 }
 
 PersistentMap PersistentMap::create(const py::kwargs& kw) {
@@ -764,7 +772,7 @@ PersistentMap PersistentMap::create(const py::kwargs& kw) {
         return m;
     }
 
-    // Large maps: use bottom-up tree construction (Phase 2)
+    // Large maps: use bottom-up tree construction (Phase 2) + arena allocator (Phase 3)
     std::vector<HashedEntry> entries;
     entries.reserve(n);
 
@@ -776,10 +784,16 @@ PersistentMap PersistentMap::create(const py::kwargs& kw) {
         entries.push_back(HashedEntry{hash, key, val});
     }
 
-    // Build tree bottom-up
-    NodeBase* root = buildTreeBulk(entries, 0, entries.size(), 0);
+    // Phase 3: Create arena for fast allocation
+    BulkOpArena arena;
 
-    return PersistentMap(root, n);
+    // Build tree bottom-up using arena
+    NodeBase* root = buildTreeBulk(entries, 0, entries.size(), 0, arena);
+
+    // Clone from arena to heap
+    NodeBase* heap_root = root ? root->cloneToHeap() : nullptr;
+
+    return PersistentMap(heap_root, n);
 }
 
 PersistentMap PersistentMap::update(const py::object& other) const {
@@ -850,4 +864,37 @@ PersistentMap PersistentMap::update(const py::object& other) const {
     }
 
     return result;
+}
+
+// ============================================================================
+// Phase 3: Arena-to-Heap Node Transfer (cloneToHeap implementations)
+// ============================================================================
+
+NodeBase* BitmapNode::cloneToHeap() const {
+    // Clone the array, recursively cloning any child nodes
+    std::vector<std::variant<std::shared_ptr<Entry>, NodeBase*>> new_array;
+    new_array.reserve(array_.size());
+
+    for (const auto& elem : array_) {
+        if (std::holds_alternative<std::shared_ptr<Entry>>(elem)) {
+            // Entry is already heap-allocated via shared_ptr, just copy
+            new_array.push_back(elem);
+        } else {
+            // NodeBase* - recursively clone child node to heap
+            NodeBase* child = std::get<NodeBase*>(elem);
+            NodeBase* heap_child = child->cloneToHeap();
+            heap_child->addRef();  // Add reference for parent
+            new_array.push_back(heap_child);
+        }
+    }
+
+    // Allocate new BitmapNode on heap
+    return new BitmapNode(bitmap_, std::move(new_array));
+}
+
+NodeBase* CollisionNode::cloneToHeap() const {
+    // Clone the entries vector (Entry* are already heap-allocated)
+    // Note: entries_ is a shared_ptr, so we can just copy it
+    // The shared_ptr will keep the vector alive
+    return new CollisionNode(hash_, entries_);
 }

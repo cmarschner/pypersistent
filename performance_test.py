@@ -159,12 +159,12 @@ def benchmark_lookup(d: dict, m: PersistentMap, n: int):
             total += m.get(f'key{i}', 0)
         return total
 
-    _, dict_time = timeit(dict_lookup)
-    _, pmap_time = timeit(pmap_lookup)
+    dict_bench = timeit(dict_lookup)
+    pmap_bench = timeit(pmap_lookup)
 
-    print(f"dict:          {format_time(dict_time)}")
-    print(f"PersistentMap: {format_time(pmap_time)}")
-    print(f"Ratio:         {pmap_time / dict_time:.2f}x slower")
+    print(f"dict:          {format_result(dict_bench, show_variance=False)}")
+    print(f"PersistentMap: {format_result(pmap_bench, show_variance=False)}")
+    print(f"Ratio:         {pmap_bench.median / dict_bench.median:.2f}x slower")
 
 
 def benchmark_deletion(d: dict, m: PersistentMap, n: int):
@@ -185,12 +185,12 @@ def benchmark_deletion(d: dict, m: PersistentMap, n: int):
             m_copy = m_copy.dissoc(f'key{i}')
         return m_copy
 
-    _, dict_time = timeit(dict_delete)
-    _, pmap_time = timeit(pmap_delete)
+    dict_bench = timeit(dict_delete)
+    pmap_bench = timeit(pmap_delete)
 
-    print(f"dict:          {format_time(dict_time)}")
-    print(f"PersistentMap: {format_time(pmap_time)}")
-    print(f"Ratio:         {pmap_time / dict_time:.2f}x slower")
+    print(f"dict:          {format_result(dict_bench, show_variance=False)}")
+    print(f"PersistentMap: {format_result(pmap_bench, show_variance=False)}")
+    print(f"Ratio:         {pmap_bench.median / dict_bench.median:.2f}x slower")
 
 
 def benchmark_iteration(d: dict, m: PersistentMap, n: int):
@@ -211,12 +211,12 @@ def benchmark_iteration(d: dict, m: PersistentMap, n: int):
             total += val
         return total
 
-    _, dict_time = timeit(dict_iter)
-    _, pmap_time = timeit(pmap_iter)
+    dict_bench = timeit(dict_iter)
+    pmap_bench = timeit(pmap_iter)
 
-    print(f"dict:          {format_time(dict_time)}")
-    print(f"PersistentMap: {format_time(pmap_time)}")
-    print(f"Ratio:         {pmap_time / dict_time:.2f}x slower")
+    print(f"dict:          {format_result(dict_bench, show_variance=False)}")
+    print(f"PersistentMap: {format_result(pmap_bench, show_variance=False)}")
+    print(f"Ratio:         {pmap_bench.median / dict_bench.median:.2f}x slower")
 
 
 def benchmark_update(d: dict, m: PersistentMap, n: int):
@@ -237,12 +237,12 @@ def benchmark_update(d: dict, m: PersistentMap, n: int):
             m_copy = m_copy.assoc(f'key{i}', i * 2)
         return m_copy
 
-    _, dict_time = timeit(dict_update)
-    _, pmap_time = timeit(pmap_update)
+    dict_bench = timeit(dict_update)
+    pmap_bench = timeit(pmap_update)
 
-    print(f"dict:          {format_time(dict_time)}")
-    print(f"PersistentMap: {format_time(pmap_time)}")
-    print(f"Ratio:         {pmap_time / dict_time:.2f}x slower")
+    print(f"dict:          {format_result(dict_bench, show_variance=False)}")
+    print(f"PersistentMap: {format_result(pmap_bench, show_variance=False)}")
+    print(f"Ratio:         {pmap_bench.median / dict_bench.median:.2f}x slower")
 
 
 def benchmark_structural_sharing(m: PersistentMap, n: int):
@@ -334,12 +334,12 @@ def benchmark_contains(d: dict, m: PersistentMap, n: int):
                 count += 1
         return count
 
-    _, dict_time = timeit(dict_contains)
-    _, pmap_time = timeit(pmap_contains)
+    dict_bench = timeit(dict_contains)
+    pmap_bench = timeit(pmap_contains)
 
-    print(f"dict:          {format_time(dict_time)}")
-    print(f"PersistentMap: {format_time(pmap_time)}")
-    print(f"Ratio:         {pmap_time / dict_time:.2f}x slower")
+    print(f"dict:          {format_result(dict_bench, show_variance=False)}")
+    print(f"PersistentMap: {format_result(pmap_bench, show_variance=False)}")
+    print(f"Ratio:         {pmap_bench.median / dict_bench.median:.2f}x slower")
 
 
 def benchmark_from_dict(n: int):
@@ -399,19 +399,19 @@ def benchmark_merge(n: int):
     def pmap_merge():
         return pmap1.merge(pmap2)
 
-    _, dict_time = timeit(dict_merge)
-    _, pmap_time = timeit(pmap_merge)
+    dict_bench = timeit(dict_merge)
+    pmap_bench = timeit(pmap_merge)
 
-    print(f"dict (copy + update): {format_time(dict_time)}")
-    print(f"PersistentMap.merge:  {format_time(pmap_time)}")
-    print(f"Ratio:                {pmap_time / dict_time:.2f}x slower")
+    print(f"dict (copy + update): {format_result(dict_bench, show_variance=False)}")
+    print(f"PersistentMap.merge:  {format_result(pmap_bench, show_variance=False)}")
+    print(f"Ratio:                {pmap_bench.median / dict_bench.median:.2f}x slower")
 
     # Also test the | operator
     def pmap_merge_operator():
         return pmap1 | pmap2
 
-    _, pmap_op_time = timeit(pmap_merge_operator)
-    print(f"PersistentMap (| op): {format_time(pmap_op_time)}")
+    pmap_op_bench = timeit(pmap_merge_operator)
+    print(f"PersistentMap (| op): {format_result(pmap_op_bench, show_variance=False)}")
 
 
 def run_benchmark_suite(sizes: list[int]):

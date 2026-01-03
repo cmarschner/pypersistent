@@ -23,14 +23,16 @@ class BitmapNode;
 class CollisionNode;
 
 // Utility functions for popcount (bit counting)
-#if defined(__x86_64__) || defined(_M_X64)
-    #include <immintrin.h>
+#if defined(__GNUC__) || defined(__clang__)
+    // Use compiler builtin (works on all platforms with GCC/Clang)
     inline uint32_t popcount(uint32_t x) {
-        return _mm_popcnt_u32(x);  // POPCNT instruction
+        return __builtin_popcount(x);
     }
-#elif defined(__GNUC__) || defined(__clang__)
+#elif defined(_MSC_VER)
+    // MSVC intrinsic
+    #include <intrin.h>
     inline uint32_t popcount(uint32_t x) {
-        return __builtin_popcount(x);  // Compiler intrinsic
+        return __popcnt(x);
     }
 #else
     // Fallback implementation

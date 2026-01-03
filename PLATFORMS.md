@@ -10,11 +10,11 @@ pypersistent builds wheels for all major platforms through GitHub Actions.
 - ✅ **Windows** (x86_64)
 
 ### **Python Versions**
-- ✅ Python 3.8
-- ✅ Python 3.9
 - ✅ Python 3.10
 - ✅ Python 3.11
 - ✅ Python 3.12
+- ✅ Python 3.13
+- ✅ Python 3.14
 
 ### **Wheel Matrix**
 
@@ -22,11 +22,11 @@ GitHub Actions builds **40+ wheels** covering:
 
 | OS | Architecture | Python Versions |
 |----|--------------|-----------------|
-| Linux | x86_64 | 3.8, 3.9, 3.10, 3.11, 3.12 |
-| Linux | aarch64 (ARM64) | 3.8, 3.9, 3.10, 3.11, 3.12 |
-| macOS | x86_64 (Intel) | 3.8, 3.9, 3.10, 3.11, 3.12 |
-| macOS | arm64 (Apple Silicon) | 3.8, 3.9, 3.10, 3.11, 3.12 |
-| Windows | AMD64 (x86_64) | 3.8, 3.9, 3.10, 3.11, 3.12 |
+| Linux | x86_64 | 3.10, 3.11, 3.12, 3.13, 3.14 |
+| Linux | aarch64 (ARM64) | 3.10, 3.11, 3.12, 3.13, 3.14 |
+| macOS | x86_64 (Intel) | 3.10, 3.11, 3.12, 3.13, 3.14 |
+| macOS | arm64 (Apple Silicon) | 3.10, 3.11, 3.12, 3.13, 3.14 |
+| Windows | AMD64 (x86_64) | 3.10, 3.11, 3.12, 3.13, 3.14 |
 
 ### **Installation**
 
@@ -60,7 +60,7 @@ Each wheel is tested during build:
 - ❌ PyPy (uses different C API)
 - ❌ musllinux/Alpine Linux (can build from source)
 - ❌ 32-bit systems (rare in 2024+)
-- ❌ Python < 3.8 (EOL)
+- ❌ Python < 3.10 (Python 3.8 EOL June 2023, Python 3.9 EOL October 2025)
 
 ## Fallback: Source Distribution
 

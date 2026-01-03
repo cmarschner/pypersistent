@@ -18,29 +18,33 @@ A high-performance persistent (immutable) hash map implementation for Python, wr
 
 pypersistent provides **6-8% faster** bulk operations compared to baseline and is **3-150x faster** than pure Python pyrsistent for most operations. The real value is structural sharing: creating variants is **3000x faster** than copying dicts.
 
-### Benchmark Results (1M elements)
+### Benchmark Results
 
-#### vs Python dict
+#### vs Python dict (1M elements)
 
 | Operation | pypersistent | dict | Notes |
 |-----------|--------------|------|-------|
 | **Construction** | 2.74s | 299ms | 9x slower (immutability cost) |
-| **Lookup** | 776ms | 427ms | 1.8x slower |
-| **Update (single)** | 147µs | ~80ms | Comparable for single ops |
-| **Structural Sharing** | **0.48ms** | 1.57s | **3000x FASTER** |
+| **Lookup (1K ops)** | 776ms | 427ms | 1.8x slower |
+| **Update (single)** | 147µs | ~80ns | Comparable for single ops |
+| **Structural Sharing (100 variants)** | **0.48ms** | 1.57s | **3000x FASTER** |
 
 **Key insight**: For creating multiple versions, pypersistent is orders of magnitude faster.
 
-#### vs pyrsistent (pure Python)
+#### vs pyrsistent (pure Python) - Apples-to-Apples
 
-| Operation | pypersistent | pyrsistent | Speedup |
-|-----------|--------------|------------|---------|
-| **Merge** | 10.5ms | 1.57s | **150x faster** |
-| **Construction** | 196ms | 788ms | **4x faster** |
-| **Lookup** | 776ms | 806ms | ~1x (neutral) |
-| **Iteration** | 169ms* | 169ms | **1x** (with items_list()) |
+| Size | Operation | pypersistent | pyrsistent | Speedup |
+|------|-----------|--------------|------------|---------|
+| **1M** | **Merge (500K+500K)** | **11.5ms** | **1.60s** | **139x faster** |
+| **1M** | **Construction** | **185ms** | **813ms** | **4.4x faster** |
+| **1M** | **Lookup (1M ops)** | **726ms** | **796ms** | **1.1x faster** |
+| **1M** | **Iteration** | 452ms | 167ms | 2.7x slower |
+| **1K** | **Merge (500+500)** | **8.7µs** | **1.22ms** | **141x faster** |
+| **1K** | **Construction** | **76µs** | **192µs** | **2.5x faster** |
+| **100** | **Merge (50+50)** | **17.8µs** | **120µs** | **6.7x faster** |
+| **100** | **Construction** | 30µs | 18.5µs | 1.6x slower |
 
-\* Using fast `items_list()` method; iterator is 2.9x slower
+**Iteration note**: Using `items_list()` instead of `items()` makes iteration 1.7-3x faster for maps < 100K
 
 ### Performance by Map Size
 

@@ -37,14 +37,10 @@ jobs:
           - os: windows-latest
             arch: x86_64
             cibw_archs: AMD64
-          # macOS Intel
-          - os: macos-13
-            arch: x86_64
-            cibw_archs: x86_64
-          # macOS Apple Silicon
+          # macOS (build both Intel and Apple Silicon on ARM64 runner)
           - os: macos-latest
-            arch: ARM64
-            cibw_archs: arm64
+            arch: universal
+            cibw_archs: x86_64 arm64
 
     steps:
       - uses: actions/checkout@v4

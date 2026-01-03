@@ -54,7 +54,7 @@ jobs:
             assert m.get('a') == 1;
             assert m['b'] == 2;
             assert len(m) == 2;
-            print('✓ Wheel works!')"
+            print('Wheel works!')"
 
           # Install test dependencies
           CIBW_TEST_REQUIRES: pytest

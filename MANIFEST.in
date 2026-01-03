@@ -1,0 +1,17 @@
+# Include C++ source files
+include src/*.cpp
+include src/*.hpp
+include CMakeLists.txt
+
+# Include documentation
+include README.md
+include LICENSE
+
+# Include tests
+include test_persistent_map_cpp.py
+include performance_test.py
+
+# Exclude build artifacts
+global-exclude *.pyc
+global-exclude *.so
+global-exclude __pycache__

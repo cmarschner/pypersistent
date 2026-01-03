@@ -1,0 +1,117 @@
+name: Build and Publish Wheels
+
+on:
+  # Trigger on new releases
+  release:
+    types: [published]
+
+  # Allow manual triggering
+  workflow_dispatch:
+
+  # Trigger on push to main (for testing)
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'setup.py'
+      - 'pyproject.toml'
+      - '.github/workflows/build-wheels.yml'
+
+jobs:
+  build_wheels:
+    name: Build wheels on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-13, macos-14]
+        # ubuntu-latest: Linux x86_64
+        # windows-latest: Windows x86_64
+        # macos-13: macOS Intel (x86_64)
+        # macos-14: macOS Apple Silicon (ARM64)
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build wheels
+        uses: pypa/cibuildwheel@v2.16
+        env:
+          # Build for CPython 3.8-3.12
+          CIBW_BUILD: cp38-* cp39-* cp310-* cp311-* cp312-*
+
+          # Skip PyPy and musllinux (alpine)
+          CIBW_SKIP: "pp* *-musllinux_*"
+
+          # Platform-specific architectures
+          CIBW_ARCHS_LINUX: x86_64 aarch64
+          CIBW_ARCHS_WINDOWS: AMD64
+          CIBW_ARCHS_MACOS: x86_64 arm64
+
+          # Test the built wheels
+          CIBW_TEST_COMMAND: >
+            python -c "from pypersistent import PersistentMap;
+            m = PersistentMap.create(a=1, b=2);
+            assert m.get('a') == 1;
+            assert m['b'] == 2;
+            assert len(m) == 2;
+            print('✓ Wheel works!')"
+
+          # Install test dependencies
+          CIBW_TEST_REQUIRES: pytest
+
+          # Use manylinux_2_28 for modern glibc
+          CIBW_MANYLINUX_X86_64_IMAGE: manylinux_2_28
+          CIBW_MANYLINUX_AARCH64_IMAGE: manylinux_2_28
+
+      - name: Upload wheels as artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheels-${{ matrix.os }}-${{ strategy.job-index }}
+          path: ./wheelhouse/*.whl
+          retention-days: 7
+
+  build_sdist:
+    name: Build source distribution
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build sdist
+        run: pipx run build --sdist
+
+      - name: Upload sdist
+        uses: actions/upload-artifact@v4
+        with:
+          name: sdist
+          path: dist/*.tar.gz
+          retention-days: 7
+
+  upload_pypi:
+    name: Upload to PyPI
+    needs: [build_wheels, build_sdist]
+    runs-on: ubuntu-latest
+    # Only upload on releases
+    if: github.event_name == 'release' && github.event.action == 'published'
+    permissions:
+      id-token: write  # For trusted publishing
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: wheels-*
+          merge-multiple: true
+          path: dist
+
+      - name: Download sdist
+        uses: actions/download-artifact@v4
+        with:
+          name: sdist
+          path: dist
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          # Uses OIDC trusted publishing (no API token needed!)
+          # Configure at: https://pypi.org/manage/account/publishing/
+          skip-existing: true

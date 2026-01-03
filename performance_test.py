@@ -3,22 +3,55 @@ Performance comparison between PersistentMap and Python's built-in dict.
 
 This test suite measures various operations to understand the trade-offs
 between persistent immutable data structures and mutable dictionaries.
+
+Statistical robustness: Each test runs multiple times with variance analysis.
 """
 
 import time
 import sys
+import statistics
 from typing import Callable, Any
 from pypersistent import PersistentMap
 
 
-def timeit(func: Callable, iterations: int = 1) -> tuple[Any, float]:
-    """Time a function execution."""
-    start = time.perf_counter()
-    result = None
-    for _ in range(iterations):
+class BenchmarkResult:
+    """Statistical results from multiple benchmark runs."""
+    def __init__(self, times: list[float], result: Any = None):
+        self.times = times
+        self.result = result
+        self.min = min(times)
+        self.max = max(times)
+        self.median = statistics.median(times)
+        self.mean = statistics.mean(times)
+        self.stdev = statistics.stdev(times) if len(times) > 1 else 0.0
+        self.cv = (self.stdev / self.mean * 100) if self.mean > 0 else 0.0  # Coefficient of variation
+
+
+def timeit(func: Callable, runs: int = 5, warmup: int = 1) -> BenchmarkResult:
+    """
+    Time a function execution with statistical analysis.
+
+    Args:
+        func: Function to benchmark
+        runs: Number of measurement runs (default: 5)
+        warmup: Number of warmup runs to discard (default: 1)
+
+    Returns:
+        BenchmarkResult with statistical metrics
+    """
+    # Warmup runs (not measured)
+    for _ in range(warmup):
         result = func()
-    end = time.perf_counter()
-    return result, (end - start) / iterations
+
+    # Measured runs
+    times = []
+    for _ in range(runs):
+        start = time.perf_counter()
+        result = func()
+        end = time.perf_counter()
+        times.append(end - start)
+
+    return BenchmarkResult(times, result)
 
 
 def format_time(seconds: float) -> str:
@@ -31,6 +64,46 @@ def format_time(seconds: float) -> str:
         return f"{seconds * 1e3:.2f} ms"
     else:
         return f"{seconds:.2f} s"
+
+
+def format_result(bench: BenchmarkResult, show_variance: bool = True) -> str:
+    """Format benchmark result with optional variance info."""
+    if show_variance and bench.cv > 5.0:  # Show variance if CV > 5%
+        return f"{format_time(bench.median)} (±{bench.cv:.1f}%)"
+    else:
+        return format_time(bench.median)
+
+
+def run_comparison(name: str, dict_func: Callable, pmap_func: Callable,
+                   runs: int = 5, show_stats: bool = True):
+    """
+    Run a statistical comparison between dict and PersistentMap.
+
+    Args:
+        name: Test name
+        dict_func: Function implementing dict version
+        pmap_func: Function implementing PersistentMap version
+        runs: Number of runs for statistics
+        show_stats: Whether to show detailed statistics
+    """
+    dict_bench = timeit(dict_func, runs=runs)
+    pmap_bench = timeit(pmap_func, runs=runs)
+
+    ratio = pmap_bench.median / dict_bench.median
+
+    print(f"dict:          {format_result(dict_bench)}")
+    print(f"PersistentMap: {format_result(pmap_bench)}")
+    print(f"Ratio:         {ratio:.2f}x slower")
+
+    # Show detailed stats if variance is high or requested
+    if show_stats and (dict_bench.cv > 10.0 or pmap_bench.cv > 10.0):
+        print(f"  ⚠ High variance detected:")
+        if dict_bench.cv > 10.0:
+            print(f"    dict: CV={dict_bench.cv:.1f}%, range={format_time(dict_bench.min)}-{format_time(dict_bench.max)}")
+        if pmap_bench.cv > 10.0:
+            print(f"    pmap: CV={pmap_bench.cv:.1f}%, range={format_time(pmap_bench.min)}-{format_time(pmap_bench.max)}")
+
+    return dict_bench, pmap_bench
 
 
 def benchmark_insertion(n: int):
@@ -51,14 +124,21 @@ def benchmark_insertion(n: int):
             m = m.assoc(f'key{i}', i)
         return m
 
-    dict_result, dict_time = timeit(dict_insert)
-    pmap_result, pmap_time = timeit(pmap_insert)
+    dict_bench = timeit(dict_insert, runs=5)
+    pmap_bench = timeit(pmap_insert, runs=5)
 
-    print(f"dict:          {format_time(dict_time)}")
-    print(f"PersistentMap: {format_time(pmap_time)}")
-    print(f"Ratio:         {pmap_time / dict_time:.2f}x slower")
+    print(f"dict:          {format_result(dict_bench)}")
+    print(f"PersistentMap: {format_result(pmap_bench)}")
+    ratio = pmap_bench.median / dict_bench.median
+    print(f"Ratio:         {ratio:.2f}x slower")
 
-    return dict_result, pmap_result
+    # Show detailed stats if variance is high
+    if dict_bench.cv > 10.0 or pmap_bench.cv > 10.0:
+        print(f"  Note: High variance detected")
+        print(f"    dict CV: {dict_bench.cv:.1f}%, range: {format_time(dict_bench.min)}-{format_time(dict_bench.max)}")
+        print(f"    pmap CV: {pmap_bench.cv:.1f}%, range: {format_time(pmap_bench.min)}-{format_time(pmap_bench.max)}")
+
+    return dict_bench.result, pmap_bench.result
 
 
 def benchmark_lookup(d: dict, m: PersistentMap, n: int):
@@ -170,6 +250,8 @@ def benchmark_structural_sharing(m: PersistentMap, n: int):
     Test the key advantage of PersistentMap: creating multiple variants efficiently.
     This is where persistent data structures shine - you can cheaply create
     many variations that share most of their structure.
+
+    CRITICAL BENCHMARK - uses robust statistics.
     """
     print(f"\n=== Structural Sharing Test (n={n:,}) ===")
     print("Creating 100 variants with one modification each...")
@@ -192,12 +274,20 @@ def benchmark_structural_sharing(m: PersistentMap, n: int):
             variants.append(variant)
         return variants
 
-    _, pmap_time = timeit(pmap_variants)
-    _, dict_time = timeit(dict_variants)
+    # Use robust statistical benchmarking with 7 runs
+    pmap_bench = timeit(pmap_variants, runs=7)
+    dict_bench = timeit(dict_variants, runs=7)
 
-    print(f"dict (copy):   {format_time(dict_time)}")
-    print(f"PersistentMap: {format_time(pmap_time)}")
-    print(f"Ratio:         {dict_time / pmap_time:.2f}x faster (PersistentMap wins!)")
+    ratio = dict_bench.median / pmap_bench.median
+
+    print(f"dict (copy):   {format_result(dict_bench)}")
+    print(f"PersistentMap: {format_result(pmap_bench)}")
+    print(f"Ratio:         {ratio:.2f}x faster (PersistentMap wins!)")
+
+    # Always show variance for this critical benchmark
+    print(f"  Statistics:")
+    print(f"    dict:  median={format_time(dict_bench.median)}, CV={dict_bench.cv:.1f}%, range={format_time(dict_bench.min)}-{format_time(dict_bench.max)}")
+    print(f"    pmap:  median={format_time(pmap_bench.median)}, CV={pmap_bench.cv:.1f}%, range={format_time(pmap_bench.min)}-{format_time(pmap_bench.max)}")
 
 
 def benchmark_memory_footprint(n: int):
@@ -253,7 +343,7 @@ def benchmark_contains(d: dict, m: PersistentMap, n: int):
 
 
 def benchmark_from_dict(n: int):
-    """Test creating a map from an existing dict."""
+    """Test creating a map from an existing dict (CRITICAL BENCHMARK - uses robust statistics)."""
     print(f"\n=== Create from Dict Test (n={n:,}) ===")
 
     # Create source dict
@@ -267,12 +357,20 @@ def benchmark_from_dict(n: int):
     def pmap_from_dict():
         return PersistentMap.from_dict(source_dict)
 
-    _, dict_time = timeit(dict_from_dict)
-    _, pmap_time = timeit(pmap_from_dict)
+    # Use robust statistical benchmarking with 7 runs for critical test
+    dict_bench = timeit(dict_from_dict, runs=7)
+    pmap_bench = timeit(pmap_from_dict, runs=7)
 
-    print(f"dict.copy():            {format_time(dict_time)}")
-    print(f"PersistentMap.from_dict: {format_time(pmap_time)}")
-    print(f"Ratio:                   {pmap_time / dict_time:.2f}x slower")
+    ratio = pmap_bench.median / dict_bench.median
+
+    print(f"dict.copy():             {format_result(dict_bench)}")
+    print(f"PersistentMap.from_dict: {format_result(pmap_bench)}")
+    print(f"Ratio:                   {ratio:.2f}x slower")
+
+    # Always show variance for this critical benchmark
+    print(f"  Statistics:")
+    print(f"    dict:  median={format_time(dict_bench.median)}, CV={dict_bench.cv:.1f}%, range={format_time(dict_bench.min)}-{format_time(dict_bench.max)}")
+    print(f"    pmap:  median={format_time(pmap_bench.median)}, CV={pmap_bench.cv:.1f}%, range={format_time(pmap_bench.min)}-{format_time(pmap_bench.max)}")
 
 
 def benchmark_merge(n: int):

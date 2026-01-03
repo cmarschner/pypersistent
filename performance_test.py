@@ -8,7 +8,7 @@ between persistent immutable data structures and mutable dictionaries.
 import time
 import sys
 from typing import Callable, Any
-from persistent_map_cpp import PersistentMap
+from pypersistent import PersistentMap
 
 
 def timeit(func: Callable, iterations: int = 1) -> tuple[Any, float]:

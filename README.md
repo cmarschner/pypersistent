@@ -43,7 +43,7 @@ python setup.py install
 ### Functional Style (Clojure-inspired)
 
 ```python
-from persistent_map_cpp import PersistentMap
+from pypersistent import PersistentMap
 
 # Create empty map
 m = PersistentMap()
@@ -69,7 +69,7 @@ len(m2)  # 2
 ### Pythonic Style
 
 ```python
-from persistent_map_cpp import PersistentMap
+from pypersistent import PersistentMap
 
 # Create from dict or kwargs
 m = PersistentMap.create(name='Alice', age=30)
@@ -162,7 +162,7 @@ pip install pytest pybind11
 python setup.py build_ext --inplace
 
 # Run tests
-pytest test_persistent_map_cpp.py -v
+pytest test_pypersistent.py -v
 
 # Run performance benchmarks
 python performance_test.py

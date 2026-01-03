@@ -5,7 +5,7 @@
 
 namespace py = pybind11;
 
-PYBIND11_MODULE(persistent_map_cpp, m) {
+PYBIND11_MODULE(pypersistent, m) {
     m.doc() = "High-performance persistent hash map (HAMT) implementation in C++";
 
     // Initialize the NOT_FOUND sentinel
@@ -214,7 +214,7 @@ PYBIND11_MODULE(persistent_map_cpp, m) {
         - Thread-safe: Immutability makes concurrent access safe without locks
 
         Example usage:
-            >>> from persistent_map_cpp import PersistentMap
+            >>> from pypersistent import PersistentMap
             >>> m1 = PersistentMap()
             >>> m2 = m1.assoc('name', 'Alice').assoc('age', 30)
             >>> m2.get('name')

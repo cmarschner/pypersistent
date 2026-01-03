@@ -1,7 +1,7 @@
-"""Unit tests for PersistentMap C++ implementation."""
+"""Unit tests for PersistentMap implementation."""
 
 import pytest
-from pypersistent import PersistentMap
+from persistent_map import PersistentMap
 
 
 class TestPersistentMapBasics:

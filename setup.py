@@ -37,7 +37,7 @@ else:
 # Define the extension module
 ext_modules = [
     Pybind11Extension(
-        "persistent_map_cpp",
+        "pypersistent",
         sources=[
             "src/persistent_map.cpp",
             "src/bindings.cpp",
@@ -51,8 +51,8 @@ ext_modules = [
 
 # Read long description from README if it exists
 long_description = """
-High-Performance Persistent Hash Map in C++
-============================================
+PyPersistent - High-Performance Persistent Hash Map
+====================================================
 
 A C++ implementation of a persistent (immutable) hash map data structure using
 Hash Array Mapped Trie (HAMT), with Python bindings via pybind11.
@@ -60,27 +60,29 @@ Hash Array Mapped Trie (HAMT), with Python bindings via pybind11.
 Features:
 - Immutability with structural sharing
 - O(log32 n) complexity for all operations
-- 5-7x faster than pure Python implementation
+- 38% faster than pure Python implementation
+- 3270x faster than dict for structural sharing
 - Thread-safe due to immutability
-- Drop-in replacement for the Python version
+- Dual API: Functional and Pythonic
 
 Example:
-    from persistent_map_cpp import PersistentMap
+    from pypersistent import PersistentMap
 
-    m1 = PersistentMap()
-    m2 = m1.assoc('key', 'value')
-    # m1 is still empty, m2 contains the association
+    m1 = PersistentMap.create(a=1, b=2)
+    m2 = m1.set('c', 3)  # Pythonic
+    m3 = m1.assoc('c', 3)  # Functional
+    # m1 is still {'a': 1, 'b': 2}
 """
 
 setup(
-    name="persistent_map_cpp",
+    name="pypersistent",
     version="1.0.0",
-    author="Your Name",
-    author_email="your.email@example.com",
+    author="Clemens Marschner",
+    author_email="clemens@marschner.com",
     description="High-performance persistent hash map (HAMT) in C++",
     long_description=long_description,
     long_description_content_type="text/plain",
-    url="https://github.com/yourusername/persistent_map_cpp",
+    url="https://github.com/cmarschner/pypersistent",
     ext_modules=ext_modules,
     cmdclass={"build_ext": build_ext},
     python_requires=">=3.7",

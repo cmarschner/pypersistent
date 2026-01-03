@@ -278,6 +278,9 @@ private:
                                    size_t start, size_t end, uint32_t shift,
                                    BulkOpArena& arena);
 
+    // Structural merge helpers (Phase 4)
+    static NodeBase* mergeNodes(NodeBase* left, NodeBase* right, uint32_t shift);
+
 public:
     // Sentinel value for "not found"
     static py::object NOT_FOUND;

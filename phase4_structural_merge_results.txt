@@ -1,0 +1,207 @@
+======================================================================
+PERSISTENT MAP vs PYTHON DICT - PERFORMANCE COMPARISON
+======================================================================
+
+======================================================================
+TESTING WITH 100 ELEMENTS
+======================================================================
+
+=== Insertion Test (n=100) ===
+dict:          12.21 µs (±5.7%)
+PersistentMap: 86.00 µs
+Ratio:         7.04x slower
+
+=== Lookup Test (n=100) ===
+dict:          12.96 µs
+PersistentMap: 29.17 µs
+Ratio:         2.25x slower
+
+=== Contains Test (n=100) ===
+dict:          12.25 µs
+PersistentMap: 27.50 µs
+Ratio:         2.24x slower
+
+=== Update Test (n=100) ===
+dict:          1.83 µs
+PersistentMap: 8.54 µs
+Ratio:         4.66x slower
+
+=== Deletion Test (n=100) ===
+dict:          1.58 µs
+PersistentMap: 8.29 µs
+Ratio:         5.24x slower
+
+=== Iteration Test (n=100) ===
+dict:          3.29 µs
+PersistentMap: 45.25 µs
+Ratio:         13.74x slower
+
+=== Create from Dict Test (n=100) ===
+dict.copy():             375.32 ns (±36.4%)
+PersistentMap.from_dict: 35.71 µs (±6.8%)
+Ratio:                   95.14x slower
+  Statistics:
+    dict:  median=375.32 ns, CV=36.4%, range=374.39 ns-832.60 ns
+    pmap:  median=35.71 µs, CV=6.8%, range=31.87 µs-37.58 µs
+
+=== Merge Test (n=100) ===
+Merging two maps of 50 elements each...
+dict (copy + update): 1.33 µs
+PersistentMap.merge:  19.75 µs
+Ratio:                14.82x slower
+PersistentMap (| op): 19.46 µs
+
+=== Structural Sharing Test (n=100) ===
+Creating 100 variants with one modification each...
+dict (copy):   65.12 µs (±14.6%)
+PersistentMap: 88.63 µs (±6.5%)
+Ratio:         0.73x faster (PersistentMap wins!)
+  Statistics:
+    dict:  median=65.12 µs, CV=14.6%, range=64.37 µs-91.83 µs
+    pmap:  median=88.63 µs, CV=6.5%, range=87.83 µs-104.37 µs
+
+======================================================================
+TESTING WITH 1,000 ELEMENTS
+======================================================================
+
+=== Insertion Test (n=1,000) ===
+dict:          129.17 µs
+PersistentMap: 908.83 µs
+Ratio:         7.04x slower
+
+=== Lookup Test (n=1,000) ===
+dict:          142.79 µs
+PersistentMap: 326.54 µs
+Ratio:         2.29x slower
+
+=== Contains Test (n=1,000) ===
+dict:          134.75 µs
+PersistentMap: 311.04 µs
+Ratio:         2.31x slower
+
+=== Update Test (n=1,000) ===
+dict:          17.33 µs
+PersistentMap: 125.92 µs
+Ratio:         7.26x slower
+
+=== Deletion Test (n=1,000) ===
+dict:          15.42 µs
+PersistentMap: 113.46 µs
+Ratio:         7.36x slower
+
+=== Iteration Test (n=1,000) ===
+dict:          31.42 µs
+PersistentMap: 259.21 µs
+Ratio:         8.25x slower
+
+=== Create from Dict Test (n=1,000) ===
+dict.copy():             3.46 µs (±29.0%)
+PersistentMap.from_dict: 455.54 µs
+Ratio:                   131.74x slower
+  Statistics:
+    dict:  median=3.46 µs, CV=29.0%, range=3.29 µs-6.46 µs
+    pmap:  median=455.54 µs, CV=1.7%, range=444.21 µs-469.00 µs
+
+=== Merge Test (n=1,000) ===
+Merging two maps of 500 elements each...
+dict (copy + update): 13.67 µs
+PersistentMap.merge:  265.54 µs
+Ratio:                19.43x slower
+PersistentMap (| op): 256.00 µs
+
+=== Structural Sharing Test (n=1,000) ===
+Creating 100 variants with one modification each...
+dict (copy):   458.96 µs (±17.1%)
+PersistentMap: 129.58 µs (±7.6%)
+Ratio:         3.54x faster (PersistentMap wins!)
+  Statistics:
+    dict:  median=458.96 µs, CV=17.1%, range=441.83 µs-673.79 µs
+    pmap:  median=129.58 µs, CV=7.6%, range=121.13 µs-150.67 µs
+
+======================================================================
+TESTING WITH 1,000,000 ELEMENTS
+======================================================================
+
+=== Insertion Test (n=1,000,000) ===
+dict:          382.38 ms
+PersistentMap: 3.01 s
+Ratio:         7.87x slower
+
+=== Lookup Test (n=1,000,000) ===
+dict:          400.99 ms
+PersistentMap: 996.95 ms
+Ratio:         2.49x slower
+
+=== Contains Test (n=1,000,000) ===
+dict:          425.44 ms
+PersistentMap: 998.25 ms
+Ratio:         2.35x slower
+
+=== Update Test (n=1,000,000) ===
+dict:          91.18 ms
+PersistentMap: 447.36 ms
+Ratio:         4.91x slower
+
+=== Deletion Test (n=1,000,000) ===
+dict:          85.34 ms
+PersistentMap: 530.91 ms
+Ratio:         6.22x slower
+
+=== Iteration Test (n=1,000,000) ===
+dict:          37.85 ms
+PersistentMap: 677.00 ms
+Ratio:         17.89x slower
+
+=== Create from Dict Test (n=1,000,000) ===
+dict.copy():             11.81 ms (±15.8%)
+PersistentMap.from_dict: 2.89 s
+Ratio:                   244.38x slower
+  Statistics:
+    dict:  median=11.81 ms, CV=15.8%, range=10.67 ms-16.48 ms
+    pmap:  median=2.89 s, CV=4.3%, range=2.71 s-3.03 s
+
+=== Merge Test (n=1,000,000) ===
+Merging two maps of 500,000 elements each...
+dict (copy + update): 116.88 ms
+PersistentMap.merge:  1.04 s
+Ratio:                8.90x slower
+PersistentMap (| op): 1.03 s
+
+=== Structural Sharing Test (n=1,000,000) ===
+Creating 100 variants with one modification each...
+dict (copy):   2.15 s (±6.9%)
+PersistentMap: 250.50 µs (±81.2%)
+Ratio:         8571.31x faster (PersistentMap wins!)
+  Statistics:
+    dict:  median=2.15 s, CV=6.9%, range=2.06 s-2.50 s
+    pmap:  median=250.50 µs, CV=81.2%, range=215.08 µs-1.09 ms
+
+=== Memory Footprint Test (n=1,000,000) ===
+dict (approximate):          30,758,320 bytes
+PersistentMap (approximate): 56 bytes
+Note: This is a rough estimate and doesn't include all internal structures
+
+======================================================================
+SUMMARY
+======================================================================
+
+PersistentMap Trade-offs:
+
+ADVANTAGES:
+  - Immutability: Thread-safe, no defensive copying needed
+  - Structural Sharing: Creating variants is O(log n), not O(n)
+  - Time-travel: Keep old versions without full copies
+  - Functional Programming: Natural fit for FP paradigms
+
+DISADVANTAGES:
+  - Slower raw performance for individual operations
+  - Higher constant factors due to tree structure
+  - More memory per entry (node overhead)
+
+USE CASES:
+  - When you need multiple versions of data
+  - Undo/redo functionality
+  - Concurrent access without locks
+  - Functional/immutable architecture
+  - When copying cost matters more than lookup speed
+

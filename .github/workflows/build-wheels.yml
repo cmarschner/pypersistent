@@ -25,25 +25,28 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Linux x86_64
+          # Linux (build both x86_64 and ARM64 with QEMU)
           - os: ubuntu-latest
-            arch: x86_64
-            cibw_archs: x86_64
-          # Linux ARM64
-          - os: ubuntu-24.04-arm64
-            arch: ARM64
-            cibw_archs: aarch64
+            arch: all
+            cibw_archs: x86_64 aarch64
           # Windows x86_64
           - os: windows-latest
             arch: x86_64
             cibw_archs: AMD64
-          # macOS (build both Intel and Apple Silicon on ARM64 runner)
+          # macOS (build both Intel and Apple Silicon)
           - os: macos-latest
             arch: universal
             cibw_archs: x86_64 arm64
 
     steps:
       - uses: actions/checkout@v4
+
+      # Set up QEMU for ARM64 emulation on Linux
+      - name: Set up QEMU
+        if: runner.os == 'Linux'
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
 
       - name: Build wheels
         uses: pypa/cibuildwheel@v2.16

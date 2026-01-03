@@ -26,13 +26,18 @@ else:
     # GCC/Clang flags (Linux, macOS)
     extra_compile_args = [
         "-O3",              # Maximum optimization
-        "-march=native",    # Use native CPU instructions (POPCNT, etc.)
         "-std=c++17",       # C++17 standard
         "-ffast-math",      # Aggressive math optimizations
         "-DNDEBUG",         # Disable assertions in release
         "-Wall",            # Enable warnings
         "-Wextra",          # Extra warnings
     ]
+
+    # Only add -march=native on Linux/x86_64 where it's safe
+    # Avoid on macOS (M-series chips cause issues with clang)
+    # Avoid on ARM (native detection is unreliable)
+    if platform.system() == "Linux" and platform.machine() in ("x86_64", "AMD64"):
+        extra_compile_args.append("-march=native")
 
 # Define the extension module
 ext_modules = [

@@ -258,6 +258,17 @@ private:
     NodeBase* root_;
     size_t count_;
 
+    // Helper structure for bulk construction
+    struct HashedEntry {
+        uint32_t hash;
+        py::object key;
+        py::object value;
+    };
+
+    // Bottom-up tree construction for bulk operations
+    static NodeBase* buildTreeBulk(std::vector<HashedEntry>& entries,
+                                   size_t start, size_t end, uint32_t shift);
+
 public:
     // Sentinel value for "not found"
     static py::object NOT_FOUND;

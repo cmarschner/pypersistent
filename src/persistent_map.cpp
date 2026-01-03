@@ -595,8 +595,127 @@ std::string PersistentMap::repr() const {
     return oss.str();
 }
 
+// ============================================================================
+// Phase 2: Bottom-Up Tree Construction
+// ============================================================================
+
+NodeBase* PersistentMap::buildTreeBulk(std::vector<HashedEntry>& entries,
+                                       size_t start, size_t end, uint32_t shift) {
+    size_t count = end - start;
+
+    // Base case: no entries
+    if (count == 0) {
+        return nullptr;
+    }
+
+    // Base case: single entry
+    if (count == 1) {
+        auto& entry = entries[start];
+        uint32_t idx = (entry.hash >> shift) & HASH_MASK;
+        uint32_t bitmap = 1 << idx;
+
+        std::vector<std::variant<std::shared_ptr<Entry>, NodeBase*>> array;
+        array.push_back(std::make_shared<Entry>(entry.key, entry.value));
+
+        return new BitmapNode(bitmap, std::move(array));
+    }
+
+    // Check if all entries have the same hash (collision case)
+    bool all_same_hash = true;
+    uint32_t first_hash = entries[start].hash;
+    for (size_t i = start + 1; i < end; ++i) {
+        if (entries[i].hash != first_hash) {
+            all_same_hash = false;
+            break;
+        }
+    }
+
+    if (all_same_hash) {
+        // Create CollisionNode
+        std::vector<Entry*> collision_entries;
+        collision_entries.reserve(count);
+        for (size_t i = start; i < end; ++i) {
+            collision_entries.push_back(new Entry(entries[i].key, entries[i].value));
+        }
+        return new CollisionNode(first_hash, std::move(collision_entries));
+    }
+
+    // Group entries by their hash bucket at this level
+    // Buckets[i] contains entries whose (hash >> shift) & HASH_MASK == i
+    std::vector<std::vector<size_t>> buckets(MAX_BITMAP_SIZE);
+
+    for (size_t i = start; i < end; ++i) {
+        uint32_t idx = (entries[i].hash >> shift) & HASH_MASK;
+        buckets[idx].push_back(i);
+    }
+
+    // Build bitmap and array for this node
+    uint32_t bitmap = 0;
+    std::vector<std::variant<std::shared_ptr<Entry>, NodeBase*>> array;
+
+    for (uint32_t idx = 0; idx < MAX_BITMAP_SIZE; ++idx) {
+        if (buckets[idx].empty()) {
+            continue;
+        }
+
+        bitmap |= (1 << idx);
+
+        if (buckets[idx].size() == 1) {
+            // Single entry in this bucket - store as Entry
+            size_t entry_idx = buckets[idx][0];
+            array.push_back(std::make_shared<Entry>(entries[entry_idx].key,
+                                                     entries[entry_idx].value));
+        } else {
+            // Multiple entries - need to recurse deeper or create collision node
+
+            // Check if we've reached max depth (shift >= 30)
+            if (shift >= 30) {
+                // Max tree depth reached, create collision node
+                std::vector<Entry*> collision_entries;
+                collision_entries.reserve(buckets[idx].size());
+                for (size_t entry_idx : buckets[idx]) {
+                    collision_entries.push_back(new Entry(entries[entry_idx].key,
+                                                         entries[entry_idx].value));
+                }
+                NodeBase* collision_node = new CollisionNode(entries[buckets[idx][0]].hash,
+                                                             std::move(collision_entries));
+                array.push_back(collision_node);
+                collision_node->addRef();
+            } else {
+                // Create a contiguous sub-vector for recursion
+                std::vector<HashedEntry> sub_entries;
+                sub_entries.reserve(buckets[idx].size());
+                for (size_t entry_idx : buckets[idx]) {
+                    sub_entries.push_back(entries[entry_idx]);
+                }
+
+                // Recursively build subtree
+                NodeBase* child = buildTreeBulk(sub_entries, 0, sub_entries.size(), shift + HASH_BITS);
+                if (child) {
+                    child->addRef();  // Add reference for parent node
+                    array.push_back(child);
+                } else {
+                    // Shouldn't happen, but handle gracefully
+                    bitmap &= ~(1 << idx);  // Clear bit if no child created
+                }
+            }
+        }
+    }
+
+    if (array.empty()) {
+        return nullptr;
+    }
+
+    return new BitmapNode(bitmap, std::move(array));
+}
+
 PersistentMap PersistentMap::fromDict(const py::dict& d) {
     size_t n = d.size();
+
+    // Empty map
+    if (n == 0) {
+        return PersistentMap();
+    }
 
     // Small maps: use current implementation (already fast)
     if (n < 1000) {
@@ -608,29 +727,32 @@ PersistentMap PersistentMap::fromDict(const py::dict& d) {
         return m;
     }
 
-    // Large maps: optimize with pre-allocation and batching
-    // Collect all entries first to avoid repeated dict iteration
-    std::vector<std::pair<py::object, py::object>> entries;
+    // Large maps: use bottom-up tree construction (Phase 2)
+    // Collect all entries and compute hashes upfront
+    std::vector<HashedEntry> entries;
     entries.reserve(n);
 
     for (auto item : d) {
-        entries.emplace_back(
-            py::reinterpret_borrow<py::object>(item.first),
-            py::reinterpret_borrow<py::object>(item.second)
-        );
+        py::object key = py::reinterpret_borrow<py::object>(item.first);
+        py::object val = py::reinterpret_borrow<py::object>(item.second);
+        uint32_t hash = pmutils::hashKey(key);
+
+        entries.push_back(HashedEntry{hash, key, val});
     }
 
-    // Build map with pre-allocated entries
-    PersistentMap m;
-    for (const auto& [key, val] : entries) {
-        m = m.assoc(key, val);
-    }
+    // Build tree bottom-up
+    NodeBase* root = buildTreeBulk(entries, 0, entries.size(), 0);
 
-    return m;
+    return PersistentMap(root, n);
 }
 
 PersistentMap PersistentMap::create(const py::kwargs& kw) {
     size_t n = kw.size();
+
+    // Empty map
+    if (n == 0) {
+        return PersistentMap();
+    }
 
     // Small maps: use current implementation
     if (n < 1000) {
@@ -642,23 +764,22 @@ PersistentMap PersistentMap::create(const py::kwargs& kw) {
         return m;
     }
 
-    // Large maps: optimize with pre-allocation
-    std::vector<std::pair<py::object, py::object>> entries;
+    // Large maps: use bottom-up tree construction (Phase 2)
+    std::vector<HashedEntry> entries;
     entries.reserve(n);
 
     for (auto item : kw) {
-        entries.emplace_back(
-            py::reinterpret_borrow<py::object>(item.first),
-            py::reinterpret_borrow<py::object>(item.second)
-        );
+        py::object key = py::reinterpret_borrow<py::object>(item.first);
+        py::object val = py::reinterpret_borrow<py::object>(item.second);
+        uint32_t hash = pmutils::hashKey(key);
+
+        entries.push_back(HashedEntry{hash, key, val});
     }
 
-    PersistentMap m;
-    for (const auto& [key, val] : entries) {
-        m = m.assoc(key, val);
-    }
+    // Build tree bottom-up
+    NodeBase* root = buildTreeBulk(entries, 0, entries.size(), 0);
 
-    return m;
+    return PersistentMap(root, n);
 }
 
 PersistentMap PersistentMap::update(const py::object& other) const {

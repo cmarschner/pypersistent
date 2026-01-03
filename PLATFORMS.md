@@ -85,3 +85,10 @@ Typical build times on GitHub Actions:
 - **Total**: ~30-40 minutes (parallel execution)
 
 All builds run in parallel at **no cost** for public repositories!
+
+## GitHub Runner Images
+
+- **Linux**: `ubuntu-latest` (x86_64 + aarch64 via QEMU)
+- **Windows**: `windows-latest` (AMD64)
+- **macOS Intel**: `macos-15-intel` (x86_64)
+- **macOS ARM**: `macos-latest` (Apple Silicon ARM64)

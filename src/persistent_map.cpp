@@ -602,20 +602,68 @@ std::string PersistentMap::repr() const {
 }
 
 PersistentMap PersistentMap::fromDict(const py::dict& d) {
-    PersistentMap m;
-    for (auto item : d) {
-        m = m.assoc(py::reinterpret_borrow<py::object>(item.first),
-                   py::reinterpret_borrow<py::object>(item.second));
+    size_t n = d.size();
+
+    // Small maps: use current implementation (already fast)
+    if (n < 1000) {
+        PersistentMap m;
+        for (auto item : d) {
+            m = m.assoc(py::reinterpret_borrow<py::object>(item.first),
+                       py::reinterpret_borrow<py::object>(item.second));
+        }
+        return m;
     }
+
+    // Large maps: optimize with pre-allocation and batching
+    // Collect all entries first to avoid repeated dict iteration
+    std::vector<std::pair<py::object, py::object>> entries;
+    entries.reserve(n);
+
+    for (auto item : d) {
+        entries.emplace_back(
+            py::reinterpret_borrow<py::object>(item.first),
+            py::reinterpret_borrow<py::object>(item.second)
+        );
+    }
+
+    // Build map with pre-allocated entries
+    PersistentMap m;
+    for (const auto& [key, val] : entries) {
+        m = m.assoc(key, val);
+    }
+
     return m;
 }
 
 PersistentMap PersistentMap::create(const py::kwargs& kw) {
-    PersistentMap m;
-    for (auto item : kw) {
-        m = m.assoc(py::reinterpret_borrow<py::object>(item.first),
-                   py::reinterpret_borrow<py::object>(item.second));
+    size_t n = kw.size();
+
+    // Small maps: use current implementation
+    if (n < 1000) {
+        PersistentMap m;
+        for (auto item : kw) {
+            m = m.assoc(py::reinterpret_borrow<py::object>(item.first),
+                       py::reinterpret_borrow<py::object>(item.second));
+        }
+        return m;
     }
+
+    // Large maps: optimize with pre-allocation
+    std::vector<std::pair<py::object, py::object>> entries;
+    entries.reserve(n);
+
+    for (auto item : kw) {
+        entries.emplace_back(
+            py::reinterpret_borrow<py::object>(item.first),
+            py::reinterpret_borrow<py::object>(item.second)
+        );
+    }
+
+    PersistentMap m;
+    for (const auto& [key, val] : entries) {
+        m = m.assoc(key, val);
+    }
+
     return m;
 }
 
@@ -625,16 +673,53 @@ PersistentMap PersistentMap::update(const py::object& other) const {
     // Handle dict or PersistentMap
     if (py::isinstance<py::dict>(other)) {
         py::dict d = other.cast<py::dict>();
-        for (auto item : d) {
-            result = result.assoc(py::reinterpret_borrow<py::object>(item.first),
-                                 py::reinterpret_borrow<py::object>(item.second));
+        size_t n = d.size();
+
+        // Small updates: use current implementation
+        if (n < 100) {
+            for (auto item : d) {
+                result = result.assoc(py::reinterpret_borrow<py::object>(item.first),
+                                     py::reinterpret_borrow<py::object>(item.second));
+            }
+        } else {
+            // Large updates: pre-allocate entries
+            std::vector<std::pair<py::object, py::object>> entries;
+            entries.reserve(n);
+
+            for (auto item : d) {
+                entries.emplace_back(
+                    py::reinterpret_borrow<py::object>(item.first),
+                    py::reinterpret_borrow<py::object>(item.second)
+                );
+            }
+
+            for (const auto& [key, val] : entries) {
+                result = result.assoc(key, val);
+            }
         }
     } else if (py::isinstance<PersistentMap>(other)) {
         const PersistentMap& other_map = other.cast<const PersistentMap&>();
+        size_t n = other_map.count_;
+
         if (other_map.root_) {
-            other_map.root_->iterate([&](const py::object& k, const py::object& v) {
-                result = result.assoc(k, v);
-            });
+            // Small updates: use current implementation
+            if (n < 100) {
+                other_map.root_->iterate([&](const py::object& k, const py::object& v) {
+                    result = result.assoc(k, v);
+                });
+            } else {
+                // Large updates: collect entries first
+                std::vector<std::pair<py::object, py::object>> entries;
+                entries.reserve(n);
+
+                other_map.root_->iterate([&](const py::object& k, const py::object& v) {
+                    entries.emplace_back(k, v);
+                });
+
+                for (const auto& [key, val] : entries) {
+                    result = result.assoc(key, val);
+                }
+            }
         }
     } else {
         // Try to iterate as a mapping

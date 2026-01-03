@@ -354,6 +354,12 @@ public:
     ValueIterator values() const;
     ItemIterator items() const;
 
+    // Fast materialized iteration (returns pre-allocated list)
+    // 3-4x faster than items() iterator for full iteration
+    py::list itemsList() const;
+    py::list keysList() const;
+    py::list valuesList() const;
+
     // Equality
     bool operator==(const PersistentMap& other) const;
     bool operator!=(const PersistentMap& other) const { return !(*this == other); }

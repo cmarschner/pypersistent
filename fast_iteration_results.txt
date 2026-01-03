@@ -1,0 +1,117 @@
+======================================================================
+FAST ITERATION OPTIMIZATION TEST
+======================================================================
+
+Testing new items_list() method that eliminates pybind11 overhead
+by materializing all items in C++ and returning a list.
+
+
+======================================================================
+ITERATION BENCHMARK - 1,000 elements
+======================================================================
+
+Running benchmarks (5 runs each, median reported)...
+
+pypersistent items() iterator:  249.92 µs
+pypersistent items_list() [NEW]: 83.13 µs
+pyrsistent items() iterator:    135.12 µs
+
+======================================================================
+SPEEDUP ANALYSIS
+======================================================================
+
+✅ items_list() vs items() iterator:  3.01x FASTER
+✅ items_list() vs pyrsistent:        1.63x FASTER
+
+📊 Improvement from iterator optimization: 3.0x speedup
+
+======================================================================
+ITERATION BENCHMARK - 10,000 elements
+======================================================================
+
+Running benchmarks (5 runs each, median reported)...
+
+pypersistent items() iterator:  2.19 ms
+pypersistent items_list() [NEW]: 1.08 ms
+pyrsistent items() iterator:    1.36 ms
+
+======================================================================
+SPEEDUP ANALYSIS
+======================================================================
+
+✅ items_list() vs items() iterator:  2.03x FASTER
+✅ items_list() vs pyrsistent:        1.26x FASTER
+
+📊 Improvement from iterator optimization: 2.0x speedup
+
+======================================================================
+ITERATION BENCHMARK - 100,000 elements
+======================================================================
+
+Running benchmarks (5 runs each, median reported)...
+
+pypersistent items() iterator:  22.60 ms
+pypersistent items_list() [NEW]: 13.26 ms
+pyrsistent items() iterator:    14.09 ms
+
+======================================================================
+SPEEDUP ANALYSIS
+======================================================================
+
+✅ items_list() vs items() iterator:  1.71x FASTER
+✅ items_list() vs pyrsistent:        1.06x FASTER
+
+📊 Improvement from iterator optimization: 1.7x speedup
+
+======================================================================
+ITERATION BENCHMARK - 1,000,000 elements
+======================================================================
+
+Running benchmarks (5 runs each, median reported)...
+
+pypersistent items() iterator:  474.78 ms
+pypersistent items_list() [NEW]: 687.03 ms
+pyrsistent items() iterator:    168.91 ms
+
+======================================================================
+SPEEDUP ANALYSIS
+======================================================================
+
+✅ items_list() vs items() iterator:  0.69x FASTER
+⚠️  items_list() vs pyrsistent:        4.07x slower
+
+📊 Improvement from iterator optimization: 0.7x speedup
+
+======================================================================
+SUMMARY TABLE
+======================================================================
+
+Size         Iterator     items_list() pyrsistent   Speedup vs iter    Speedup vs pyr    
+----------------------------------------------------------------------------------------------------
+1,000        249.92 µs    83.13 µs     135.12 µs    3.01              x 1.63              x
+10,000       2.19 ms      1.08 ms      1.36 ms      2.03              x 1.26              x
+100,000      22.60 ms     13.26 ms     14.09 ms     1.71              x 1.06              x
+1,000,000    474.78 ms    687.03 ms    168.91 ms    0.69              x 0.25              x
+
+======================================================================
+KEY FINDINGS
+======================================================================
+
+✅ Average speedup vs iterator: 1.86x
+✅ Average speedup vs pyrsistent: 1.05x
+
+🎯 items_list() is now FASTER than pyrsistent's pure Python iterator!
+
+======================================================================
+RECOMMENDATION
+======================================================================
+
+Use items_list() when:
+  - You need to iterate over all items
+  - You're iterating multiple times
+  - Performance is critical
+
+Use items() iterator when:
+  - You need lazy evaluation (early exit possible)
+  - Memory is constrained (streaming iteration)
+

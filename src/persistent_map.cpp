@@ -533,6 +533,63 @@ ItemIterator PersistentMap::items() const {
     return ItemIterator(root_);
 }
 
+// Fast materialized iteration - returns pre-allocated list
+// Pre-allocates list with exact size to avoid repeated reallocation
+py::list PersistentMap::itemsList() const {
+    if (!root_ || count_ == 0) {
+        return py::list();
+    }
+
+    // Pre-allocate Python list with exact size (critical for performance!)
+    py::list result(count_);
+    MapIterator iter(root_);
+    size_t idx = 0;
+
+    while (iter.hasNext()) {
+        auto pair = iter.next();
+        // Direct assignment instead of append (much faster)
+        result[idx++] = py::make_tuple(pair.first, pair.second);
+    }
+
+    return result;
+}
+
+py::list PersistentMap::keysList() const {
+    if (!root_ || count_ == 0) {
+        return py::list();
+    }
+
+    // Pre-allocate list with exact size
+    py::list result(count_);
+    MapIterator iter(root_);
+    size_t idx = 0;
+
+    while (iter.hasNext()) {
+        auto pair = iter.next();
+        result[idx++] = pair.first;
+    }
+
+    return result;
+}
+
+py::list PersistentMap::valuesList() const {
+    if (!root_ || count_ == 0) {
+        return py::list();
+    }
+
+    // Pre-allocate list with exact size
+    py::list result(count_);
+    MapIterator iter(root_);
+    size_t idx = 0;
+
+    while (iter.hasNext()) {
+        auto pair = iter.next();
+        result[idx++] = pair.second;
+    }
+
+    return result;
+}
+
 bool PersistentMap::operator==(const PersistentMap& other) const {
     if (count_ != other.count_) {
         return false;

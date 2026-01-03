@@ -158,18 +158,24 @@ public:
 class CollisionNode : public NodeBase {
 private:
     uint32_t hash_;
-    std::vector<Entry*> entries_;
+    std::shared_ptr<std::vector<Entry*>> entries_;
 
 public:
     CollisionNode(uint32_t hash, const std::vector<Entry*>& entries)
-        : hash_(hash), entries_(entries) {}
+        : hash_(hash), entries_(std::make_shared<std::vector<Entry*>>(entries)) {}
 
     CollisionNode(uint32_t hash, std::vector<Entry*>&& entries)
-        : hash_(hash), entries_(std::move(entries)) {}
+        : hash_(hash), entries_(std::make_shared<std::vector<Entry*>>(std::move(entries))) {}
+
+    CollisionNode(uint32_t hash, std::shared_ptr<std::vector<Entry*>> entries)
+        : hash_(hash), entries_(entries) {}
 
     ~CollisionNode() override {
-        for (Entry* entry : entries_) {
-            delete entry;
+        // Only delete entries if we're the last owner
+        if (entries_.use_count() == 1) {
+            for (Entry* entry : *entries_) {
+                delete entry;
+            }
         }
     }
 
@@ -186,7 +192,7 @@ public:
     void iterate(const std::function<void(const py::object&, const py::object&)>& callback) const override;
 
     uint32_t getHash() const { return hash_; }
-    const std::vector<Entry*>& getEntries() const { return entries_; }
+    const std::vector<Entry*>& getEntries() const { return *entries_; }
 };
 
 // Forward declaration

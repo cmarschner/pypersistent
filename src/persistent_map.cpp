@@ -295,7 +295,7 @@ NodeBase* BitmapNode::createNode(uint32_t shift,
 
 py::object CollisionNode::get(uint32_t shift, uint32_t hash,
                               const py::object& key, const py::object& notFound) const {
-    for (Entry* entry : entries_) {
+    for (Entry* entry : *entries_) {
         if (pmutils::keysEqual(entry->key, key)) {
             return entry->value;
         }
@@ -306,61 +306,55 @@ py::object CollisionNode::get(uint32_t shift, uint32_t hash,
 NodeBase* CollisionNode::assoc(uint32_t shift, uint32_t hash,
                                const py::object& key, const py::object& val) const {
     // Check if key already exists
-    for (size_t i = 0; i < entries_.size(); ++i) {
-        if (pmutils::keysEqual(entries_[i]->key, key)) {
+    for (size_t i = 0; i < entries_->size(); ++i) {
+        if (pmutils::keysEqual((*entries_)[i]->key, key)) {
             // Key exists, update value
-            if (entries_[i]->value.is(val)) {
+            if ((*entries_)[i]->value.is(val)) {
                 // Value unchanged
                 return const_cast<CollisionNode*>(this);
             }
 
-            std::vector<Entry*> newEntries;
-            newEntries.reserve(entries_.size());
-            for (size_t j = 0; j < entries_.size(); ++j) {
-                if (j == i) {
-                    newEntries.push_back(new Entry(key, val));
-                } else {
-                    newEntries.push_back(new Entry(entries_[j]->key, entries_[j]->value));
-                }
-            }
-            return new CollisionNode(hash_, std::move(newEntries));
+            // Copy-on-write: only copy the vector, reuse Entry pointers except for the changed one
+            auto newEntries = std::make_shared<std::vector<Entry*>>(*entries_);
+            delete (*newEntries)[i];  // Delete the old entry
+            (*newEntries)[i] = new Entry(key, val);  // Replace with new entry
+            return new CollisionNode(hash_, newEntries);
         }
     }
 
     // Key not found, append
-    std::vector<Entry*> newEntries;
-    newEntries.reserve(entries_.size() + 1);
-    for (Entry* entry : entries_) {
-        newEntries.push_back(new Entry(entry->key, entry->value));
-    }
-    newEntries.push_back(new Entry(key, val));
-    return new CollisionNode(hash_, std::move(newEntries));
+    // Copy-on-write: copy vector and add new entry
+    auto newEntries = std::make_shared<std::vector<Entry*>>(*entries_);
+    newEntries->push_back(new Entry(key, val));
+    return new CollisionNode(hash_, newEntries);
 }
 
 NodeBase* CollisionNode::dissoc(uint32_t shift, uint32_t hash,
                                 const py::object& key) const {
-    for (size_t i = 0; i < entries_.size(); ++i) {
-        if (pmutils::keysEqual(entries_[i]->key, key)) {
+    for (size_t i = 0; i < entries_->size(); ++i) {
+        if (pmutils::keysEqual((*entries_)[i]->key, key)) {
             // Found it
-            if (entries_.size() == 1) {
+            if (entries_->size() == 1) {
                 // Last entry, return null
                 return nullptr;
             }
 
-            if (entries_.size() == 2) {
+            if (entries_->size() == 2) {
                 // Only one entry left, return null (will be handled by parent)
                 return nullptr;
             }
 
             // Create new collision node without this entry
-            std::vector<Entry*> newEntries;
-            newEntries.reserve(entries_.size() - 1);
-            for (size_t j = 0; j < entries_.size(); ++j) {
+            // Copy-on-write: copy vector and remove entry, but need to duplicate Entry objects
+            // since the old node will delete them
+            auto newEntries = std::make_shared<std::vector<Entry*>>();
+            newEntries->reserve(entries_->size() - 1);
+            for (size_t j = 0; j < entries_->size(); ++j) {
                 if (j != i) {
-                    newEntries.push_back(new Entry(entries_[j]->key, entries_[j]->value));
+                    newEntries->push_back(new Entry((*entries_)[j]->key, (*entries_)[j]->value));
                 }
             }
-            return new CollisionNode(hash_, std::move(newEntries));
+            return new CollisionNode(hash_, newEntries);
         }
     }
 
@@ -369,7 +363,7 @@ NodeBase* CollisionNode::dissoc(uint32_t shift, uint32_t hash,
 }
 
 void CollisionNode::iterate(const std::function<void(const py::object&, const py::object&)>& callback) const {
-    for (Entry* entry : entries_) {
+    for (Entry* entry : *entries_) {
         callback(entry->key, entry->value);
     }
 }

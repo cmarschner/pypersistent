@@ -252,6 +252,70 @@ def benchmark_contains(d: dict, m: PersistentMap, n: int):
     print(f"Ratio:         {pmap_time / dict_time:.2f}x slower")
 
 
+def benchmark_from_dict(n: int):
+    """Test creating a map from an existing dict."""
+    print(f"\n=== Create from Dict Test (n={n:,}) ===")
+
+    # Create source dict
+    source_dict = {f'key{i}': i for i in range(n)}
+
+    # Python dict - just copy
+    def dict_from_dict():
+        return dict(source_dict)
+
+    # PersistentMap - build from dict
+    def pmap_from_dict():
+        return PersistentMap.from_dict(source_dict)
+
+    _, dict_time = timeit(dict_from_dict)
+    _, pmap_time = timeit(pmap_from_dict)
+
+    print(f"dict.copy():            {format_time(dict_time)}")
+    print(f"PersistentMap.from_dict: {format_time(pmap_time)}")
+    print(f"Ratio:                   {pmap_time / dict_time:.2f}x slower")
+
+
+def benchmark_merge(n: int):
+    """
+    Test merging two maps together.
+    This is a key operation where structural sharing can provide benefits.
+    """
+    print(f"\n=== Merge Test (n={n:,}) ===")
+    print(f"Merging two maps of {n//2:,} elements each...")
+
+    # Build two dicts to merge
+    dict1 = {f'key{i}': i for i in range(n // 2)}
+    dict2 = {f'key{i + n//2}': i + n//2 for i in range(n // 2)}
+
+    # Build two PersistentMaps to merge
+    pmap1 = PersistentMap.from_dict(dict1)
+    pmap2 = PersistentMap.from_dict(dict2)
+
+    # Python dict - must copy and update
+    def dict_merge():
+        result = dict1.copy()
+        result.update(dict2)
+        return result
+
+    # PersistentMap - structural sharing
+    def pmap_merge():
+        return pmap1.merge(pmap2)
+
+    _, dict_time = timeit(dict_merge)
+    _, pmap_time = timeit(pmap_merge)
+
+    print(f"dict (copy + update): {format_time(dict_time)}")
+    print(f"PersistentMap.merge:  {format_time(pmap_time)}")
+    print(f"Ratio:                {pmap_time / dict_time:.2f}x slower")
+
+    # Also test the | operator
+    def pmap_merge_operator():
+        return pmap1 | pmap2
+
+    _, pmap_op_time = timeit(pmap_merge_operator)
+    print(f"PersistentMap (| op): {format_time(pmap_op_time)}")
+
+
 def run_benchmark_suite(sizes: list[int]):
     """Run complete benchmark suite for different sizes."""
     print("=" * 70)
@@ -272,6 +336,8 @@ def run_benchmark_suite(sizes: list[int]):
         benchmark_update(d, m, n)
         benchmark_deletion(d, m, n)
         benchmark_iteration(d, m, n)
+        benchmark_from_dict(n)
+        benchmark_merge(n)
         benchmark_structural_sharing(m, n)
 
     # Memory test (only for largest size)

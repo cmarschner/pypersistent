@@ -373,11 +373,67 @@ void CollisionNode::iterate(const std::function<void(const py::object&, const py
 //=============================================================================
 
 MapIterator::MapIterator(const NodeBase* root)
-    : current_node_(nullptr), current_index_(0), finished_(root == nullptr) {
-    if (root) {
-        stack_.push_back({root, 0});
+    : root_(root), current_node_(nullptr), current_index_(0), finished_(root == nullptr) {
+    if (root_) {
+        root_->addRef();  // Keep root alive
+        stack_.push_back({root_, 0});
         advance();
     }
+}
+
+MapIterator::~MapIterator() {
+    if (root_) {
+        root_->release();
+    }
+}
+
+MapIterator::MapIterator(const MapIterator& other)
+    : stack_(other.stack_), root_(other.root_),
+      current_node_(other.current_node_), current_index_(other.current_index_),
+      finished_(other.finished_) {
+    if (root_) {
+        root_->addRef();
+    }
+}
+
+MapIterator& MapIterator::operator=(const MapIterator& other) {
+    if (this != &other) {
+        if (other.root_) other.root_->addRef();
+        if (root_) root_->release();
+
+        stack_ = other.stack_;
+        root_ = other.root_;
+        current_node_ = other.current_node_;
+        current_index_ = other.current_index_;
+        finished_ = other.finished_;
+    }
+    return *this;
+}
+
+MapIterator::MapIterator(MapIterator&& other) noexcept
+    : stack_(std::move(other.stack_)), root_(other.root_),
+      current_node_(other.current_node_), current_index_(other.current_index_),
+      finished_(other.finished_) {
+    other.root_ = nullptr;
+    other.current_node_ = nullptr;
+    other.finished_ = true;
+}
+
+MapIterator& MapIterator::operator=(MapIterator&& other) noexcept {
+    if (this != &other) {
+        if (root_) root_->release();
+
+        stack_ = std::move(other.stack_);
+        root_ = other.root_;
+        current_node_ = other.current_node_;
+        current_index_ = other.current_index_;
+        finished_ = other.finished_;
+
+        other.root_ = nullptr;
+        other.current_node_ = nullptr;
+        other.finished_ = true;
+    }
+    return *this;
 }
 
 void MapIterator::advance() {

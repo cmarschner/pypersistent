@@ -296,3 +296,31 @@ class TestPersistentMapEdgeCases:
         assert 'PersistentMap' in repr_str
         assert "'a'" in repr_str or '"a"' in repr_str
         assert '1' in repr_str
+
+    def test_iterator_from_temporary_merge(self):
+        """
+        Regression test for iterator dangling pointer bug.
+
+        The bug: creating an iterator from a temporary PersistentMap
+        (e.g., (pm1 | pm2).items()) caused a segfault because the
+        temporary was destroyed before the iterator was consumed,
+        leaving the iterator with a dangling pointer to the root node.
+
+        The fix: MapIterator now holds a reference to the root node
+        by incrementing its refcount.
+        """
+        d = {x: x for x in range(10000)}
+        d2 = {y: y for y in range(5000, 15000, 1)}
+        pm1 = PersistentMap.from_dict(d)
+        pm2 = PersistentMap.from_dict(d2)
+
+        # This used to crash with exit code 139 (SIGSEGV)
+        a = sorted((d | d2).items())
+        b = sorted((pm1 | pm2).items())
+        assert a == b
+
+        # Also test with keys() and values()
+        merged_keys = sorted((pm1 | pm2).keys())
+        merged_values = set((pm1 | pm2).values())
+        assert len(merged_keys) == 15000
+        assert len(merged_values) == 15000

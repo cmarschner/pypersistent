@@ -216,6 +216,7 @@ private:
         size_t index;
     };
     std::vector<StackFrame> stack_;
+    const NodeBase* root_;  // Hold reference to root
     const NodeBase* current_node_;
     size_t current_index_;
     bool finished_;
@@ -224,6 +225,17 @@ private:
 
 public:
     MapIterator(const NodeBase* root);
+    ~MapIterator();
+
+    // Copy constructor
+    MapIterator(const MapIterator& other);
+    // Copy assignment
+    MapIterator& operator=(const MapIterator& other);
+    // Move constructor
+    MapIterator(MapIterator&& other) noexcept;
+    // Move assignment
+    MapIterator& operator=(MapIterator&& other) noexcept;
+
     bool hasNext() const { return !finished_; }
     std::pair<py::object, py::object> next();
 };

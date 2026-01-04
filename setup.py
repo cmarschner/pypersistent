@@ -47,6 +47,8 @@ ext_modules = [
             "src/persistent_map.cpp",
             "src/persistent_array_map.cpp",
             "src/persistent_hash_set.cpp",
+            "src/persistent_vector.cpp",
+            "src/persistent_tree_map.cpp",
             "src/bindings.cpp",
         ],
         include_dirs=["src"],

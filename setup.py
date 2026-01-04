@@ -45,6 +45,8 @@ ext_modules = [
         "pypersistent",
         sources=[
             "src/persistent_map.cpp",
+            "src/persistent_array_map.cpp",
+            "src/persistent_hash_set.cpp",
             "src/bindings.cpp",
         ],
         include_dirs=["src"],

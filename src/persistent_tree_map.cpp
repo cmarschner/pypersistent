@@ -1,34 +1,90 @@
 #include "persistent_tree_map.hpp"
 #include <sstream>
 #include <algorithm>
+#include <iostream>
+
+// Debug logging flag - set to true to enable refcount tracing
+static const bool DEBUG_REFCOUNT = false;
 
 // TreeNode implementation
 
 TreeNode::TreeNode(const py::object& k, const py::object& v, Color c)
-    : key(k), value(v), left(nullptr), right(nullptr), color(c), refcount_(0) {}
+    : key(k), value(v), left(nullptr), right(nullptr), color(c), refcount_(0) {
+    if (DEBUG_REFCOUNT) {
+        std::cerr << "[TreeNode::new] " << this << " key=" << py::str(k).cast<std::string>()
+                  << " refcount=0" << std::endl;
+    }
+}
 
 TreeNode::~TreeNode() {
+    if (DEBUG_REFCOUNT) {
+        std::cerr << "[TreeNode::~TreeNode] " << this << " key=" << py::str(key).cast<std::string>()
+                  << " (releasing children)" << std::endl;
+    }
     if (left) left->release();
     if (right) right->release();
 }
 
 void TreeNode::addRef() {
-    refcount_.fetch_add(1, std::memory_order_relaxed);
+    int oldVal = refcount_.fetch_add(1, std::memory_order_relaxed);
+    if (DEBUG_REFCOUNT) {
+        std::cerr << "[TreeNode::addRef] " << this << " key=" << py::str(key).cast<std::string>()
+                  << " refcount " << oldVal << " -> " << (oldVal + 1) << std::endl;
+    }
 }
 
 void TreeNode::release() {
-    if (refcount_.fetch_sub(1, std::memory_order_acq_rel) == 1) {
+    int oldVal = refcount_.fetch_sub(1, std::memory_order_acq_rel);
+    if (DEBUG_REFCOUNT) {
+        std::cerr << "[TreeNode::release] " << this << " key=" << py::str(key).cast<std::string>()
+                  << " refcount " << oldVal << " -> " << (oldVal - 1);
+        if (oldVal == 1) {
+            std::cerr << " [DELETING]";
+        } else if (oldVal <= 0) {
+            std::cerr << " [ERROR: UNDERFLOW!]";
+        }
+        std::cerr << std::endl;
+    }
+    if (oldVal == 1) {
         delete this;
     }
 }
 
 TreeNode* TreeNode::clone() const {
+    if (DEBUG_REFCOUNT) {
+        std::cerr << "[TreeNode::clone] Cloning " << this << " key=" << py::str(key).cast<std::string>() << std::endl;
+    }
     TreeNode* newNode = new TreeNode(key, value, color);
     newNode->left = left;
     newNode->right = right;
-    if (left) left->addRef();
-    if (right) right->addRef();
+    if (left) {
+        if (DEBUG_REFCOUNT) std::cerr << "  (clone adding ref to left child)" << std::endl;
+        left->addRef();
+    }
+    if (right) {
+        if (DEBUG_REFCOUNT) std::cerr << "  (clone adding ref to right child)" << std::endl;
+        right->addRef();
+    }
     return newNode;
+}
+
+// Helper to recursively delete a tree with refcount=0 nodes
+// Nullifies children before deleting to prevent double-release
+static void deleteTreeWithRefcountZero(TreeNode* node) {
+    if (!node) return;
+
+    // Recursively delete children first
+    if (node->left) {
+        deleteTreeWithRefcountZero(node->left);
+    }
+    if (node->right) {
+        deleteTreeWithRefcountZero(node->right);
+    }
+
+    // Nullify children before deleting this node
+    node->left = nullptr;
+    node->right = nullptr;
+    delete node;
 }
 
 // PersistentTreeMap implementation
@@ -40,6 +96,10 @@ PersistentTreeMap::PersistentTreeMap(TreeNode* root, size_t count)
     : root_(root), count_(count) {
     // Root comes in with refcount=0 from insert()/remove()
     // Must call addRef() because destructor will call release()
+    if (DEBUG_REFCOUNT && root_) {
+        std::cerr << "[PersistentTreeMap::PersistentTreeMap] Taking ownership of root " << root_
+                  << " (calling addRef)" << std::endl;
+    }
     if (root_) root_->addRef();
 }
 
@@ -55,6 +115,9 @@ PersistentTreeMap::PersistentTreeMap(PersistentTreeMap&& other) noexcept
 }
 
 PersistentTreeMap::~PersistentTreeMap() {
+    if (DEBUG_REFCOUNT && root_) {
+        std::cerr << "[PersistentTreeMap::~PersistentTreeMap] Releasing root " << root_ << std::endl;
+    }
     if (root_) root_->release();
 }
 
@@ -99,11 +162,12 @@ PersistentTreeMap PersistentTreeMap::assoc(const py::object& key, const py::obje
     TreeNode* newRoot = insert(root_, key, val, inserted);
 
     // Ensure root is black
+    // newRoot is a brand new tree with refcount=0, we can modify it directly
     if (newRoot && newRoot->isRed()) {
-        TreeNode* blackRoot = newRoot->clone();
-        blackRoot->color = Color::BLACK;
-        newRoot->release();
-        newRoot = blackRoot;
+        if (DEBUG_REFCOUNT) {
+            std::cerr << "[assoc] Fixing root color from RED to BLACK" << std::endl;
+        }
+        newRoot->color = Color::BLACK;
     }
 
     size_t newCount = inserted ? count_ + 1 : count_;
@@ -140,7 +204,11 @@ TreeNode* PersistentTreeMap::insert(TreeNode* node, const py::object& key, const
     if (balanced != newNode) {
         // newNode was replaced by balance(), clean up
         // Don't use release() - newNode has refcount=0 from clone()
-        delete newNode;  // Destructor will release children correctly
+        // Must nullify children before delete to prevent underflow
+        if (DEBUG_REFCOUNT) std::cerr << "[insert] Deleting replaced node after balance" << std::endl;
+        newNode->left = nullptr;
+        newNode->right = nullptr;
+        delete newNode;
     }
 
     return balanced;
@@ -153,16 +221,23 @@ PersistentTreeMap PersistentTreeMap::dissoc(const py::object& key) const {
     TreeNode* newRoot = remove(root_, key, removed);
 
     if (!removed) {
-        if (newRoot) newRoot->release();
+        // Key wasn't found, discard the new tree (refcount=0 nodes with shared children)
+        if (newRoot) {
+            if (DEBUG_REFCOUNT) {
+                std::cerr << "[dissoc] Key not found, recursively deleting unused tree" << std::endl;
+            }
+            deleteTreeWithRefcountZero(newRoot);
+        }
         return *this;
     }
 
     // Ensure root is black
+    // newRoot is a brand new tree with refcount=0, we can modify it directly
     if (newRoot && newRoot->isRed()) {
-        TreeNode* blackRoot = newRoot->clone();
-        blackRoot->color = Color::BLACK;
-        newRoot->release();
-        newRoot = blackRoot;
+        if (DEBUG_REFCOUNT) {
+            std::cerr << "[dissoc] Fixing root color from RED to BLACK" << std::endl;
+        }
+        newRoot->color = Color::BLACK;
     }
 
     return PersistentTreeMap(newRoot, count_ - 1);
@@ -200,15 +275,17 @@ TreeNode* PersistentTreeMap::remove(TreeNode* node, const py::object& key, bool&
         if (newNode->right == nullptr) {
             TreeNode* leftChild = newNode->left;
             if (leftChild) leftChild->addRef();
-            // Delete newNode - destructor will release the child we just addRef'd
-            // Net effect: child refcount stays the same
+            // Delete newNode - nullify children to prevent underflow in destructor
+            newNode->left = nullptr;
+            newNode->right = nullptr;
             delete newNode;
             return leftChild;
         } else if (newNode->left == nullptr) {
             TreeNode* rightChild = newNode->right;
             if (rightChild) rightChild->addRef();
-            // Delete newNode - destructor will release the child we just addRef'd
-            // Net effect: child refcount stays the same
+            // Delete newNode - nullify children to prevent underflow in destructor
+            newNode->left = nullptr;
+            newNode->right = nullptr;
             delete newNode;
             return rightChild;
         } else {
@@ -386,7 +463,10 @@ TreeNode* PersistentTreeMap::balance(TreeNode* node) const {
         TreeNode* newCurrent = rotateRight(current);
         if (currentIsTemp && current != node) {
             // Current is a temporary from previous rotation with refcount=0
-            // Children were addRef'd by rotateRight, so destructor will release them correctly
+            // Must nullify children before delete to prevent underflow in destructor
+            if (DEBUG_REFCOUNT) std::cerr << "[balance] Deleting temp node after rotateRight" << std::endl;
+            current->left = nullptr;
+            current->right = nullptr;
             delete current;
         }
         currentIsTemp = true;
@@ -399,7 +479,10 @@ TreeNode* PersistentTreeMap::balance(TreeNode* node) const {
         TreeNode* newCurrent = flipColors(current);
         if (currentIsTemp && current != node) {
             // Current is a temporary from previous rotation with refcount=0
-            // Children were addRef'd by flipColors, so destructor will release them correctly
+            // Must nullify children before delete to prevent underflow in destructor
+            if (DEBUG_REFCOUNT) std::cerr << "[balance] Deleting temp node after flipColors" << std::endl;
+            current->left = nullptr;
+            current->right = nullptr;
             delete current;
         }
         currentIsTemp = true;
@@ -422,14 +505,18 @@ TreeNode* PersistentTreeMap::moveRedLeft(TreeNode* node) const {
         newNode = rotateLeft(newNode);
         // Clean up temp if it's different from the result
         if (temp != newNode) {
-            delete temp;  // Destructor will release children correctly
+            temp->left = nullptr;
+            temp->right = nullptr;
+            delete temp;
         }
 
         temp = newNode;
         newNode = flipColors(newNode);
         // Clean up temp if it's different from the result
         if (temp != newNode) {
-            delete temp;  // Destructor will release children correctly
+            temp->left = nullptr;
+            temp->right = nullptr;
+            delete temp;
         }
     }
 
@@ -444,14 +531,18 @@ TreeNode* PersistentTreeMap::moveRedRight(TreeNode* node) const {
         newNode = rotateRight(newNode);
         // Clean up temp if it's different from the result
         if (temp != newNode) {
-            delete temp;  // Destructor will release children correctly
+            temp->left = nullptr;
+            temp->right = nullptr;
+            delete temp;
         }
 
         temp = newNode;
         newNode = flipColors(newNode);
         // Clean up temp if it's different from the result
         if (temp != newNode) {
-            delete temp;  // Destructor will release children correctly
+            temp->left = nullptr;
+            temp->right = nullptr;
+            delete temp;
         }
     }
 

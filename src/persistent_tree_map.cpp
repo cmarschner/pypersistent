@@ -38,9 +38,9 @@ PersistentTreeMap::PersistentTreeMap()
 
 PersistentTreeMap::PersistentTreeMap(TreeNode* root, size_t count)
     : root_(root), count_(count) {
-    // Note: root should come in with refcount=1 from insert()/remove()
-    // We're taking ownership, so we don't need to addRef
-    // The destructor will call release() to decrement back to 0
+    // Root comes in with refcount=0 from insert()/remove()
+    // Must call addRef() because destructor will call release()
+    if (root_) root_->addRef();
 }
 
 PersistentTreeMap::PersistentTreeMap(const PersistentTreeMap& other)
@@ -114,7 +114,7 @@ TreeNode* PersistentTreeMap::insert(TreeNode* node, const py::object& key, const
     if (node == nullptr) {
         inserted = true;
         TreeNode* newNode = new TreeNode(key, val, Color::RED);
-        // Don't call addRef() - node created with refcount=1 for the caller
+        // Node created with refcount=0, ownership transferred to caller
         return newNode;
     }
 
@@ -138,8 +138,9 @@ TreeNode* PersistentTreeMap::insert(TreeNode* node, const py::object& key, const
     // Balance the tree
     TreeNode* balanced = balance(newNode);
     if (balanced != newNode) {
-        newNode->release();
-        // Don't call addRef() - balance() returns a node with refcount=1
+        // newNode was replaced by balance(), clean up
+        // Don't use release() - newNode has refcount=0 from clone()
+        delete newNode;  // Destructor will release children correctly
     }
 
     return balanced;
@@ -199,12 +200,16 @@ TreeNode* PersistentTreeMap::remove(TreeNode* node, const py::object& key, bool&
         if (newNode->right == nullptr) {
             TreeNode* leftChild = newNode->left;
             if (leftChild) leftChild->addRef();
-            newNode->release();
+            // Delete newNode - destructor will release the child we just addRef'd
+            // Net effect: child refcount stays the same
+            delete newNode;
             return leftChild;
         } else if (newNode->left == nullptr) {
             TreeNode* rightChild = newNode->right;
             if (rightChild) rightChild->addRef();
-            newNode->release();
+            // Delete newNode - destructor will release the child we just addRef'd
+            // Net effect: child refcount stays the same
+            delete newNode;
             return rightChild;
         } else {
             // Node has two children - replace with minimum from right subtree
@@ -380,8 +385,9 @@ TreeNode* PersistentTreeMap::balance(TreeNode* node) const {
         current->left->left && current->left->left->isRed()) {
         TreeNode* newCurrent = rotateRight(current);
         if (currentIsTemp && current != node) {
-            // Current is a temporary from previous rotation, release it
-            current->release();
+            // Current is a temporary from previous rotation with refcount=0
+            // Children were addRef'd by rotateRight, so destructor will release them correctly
+            delete current;
         }
         currentIsTemp = true;
         current = newCurrent;
@@ -392,8 +398,9 @@ TreeNode* PersistentTreeMap::balance(TreeNode* node) const {
         current->right && current->right->isRed()) {
         TreeNode* newCurrent = flipColors(current);
         if (currentIsTemp && current != node) {
-            // Current is a temporary from previous rotation, release it
-            current->release();
+            // Current is a temporary from previous rotation with refcount=0
+            // Children were addRef'd by flipColors, so destructor will release them correctly
+            delete current;
         }
         currentIsTemp = true;
         current = newCurrent;
@@ -409,10 +416,21 @@ TreeNode* PersistentTreeMap::moveRedLeft(TreeNode* node) const {
         TreeNode* newRight = rotateRight(newNode->right);
         newNode->right->release();
         newNode->right = newRight;
-        newRight->addRef();
+        // Don't call addRef() - transferring ownership from rotateRight (refcount=0)
 
+        TreeNode* temp = newNode;
         newNode = rotateLeft(newNode);
+        // Clean up temp if it's different from the result
+        if (temp != newNode) {
+            delete temp;  // Destructor will release children correctly
+        }
+
+        temp = newNode;
         newNode = flipColors(newNode);
+        // Clean up temp if it's different from the result
+        if (temp != newNode) {
+            delete temp;  // Destructor will release children correctly
+        }
     }
 
     return newNode;
@@ -422,8 +440,19 @@ TreeNode* PersistentTreeMap::moveRedRight(TreeNode* node) const {
     TreeNode* newNode = flipColors(node);
 
     if (newNode->left && newNode->left->left && newNode->left->left->isRed()) {
+        TreeNode* temp = newNode;
         newNode = rotateRight(newNode);
+        // Clean up temp if it's different from the result
+        if (temp != newNode) {
+            delete temp;  // Destructor will release children correctly
+        }
+
+        temp = newNode;
         newNode = flipColors(newNode);
+        // Clean up temp if it's different from the result
+        if (temp != newNode) {
+            delete temp;  // Destructor will release children correctly
+        }
     }
 
     return newNode;

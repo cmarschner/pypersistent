@@ -38,7 +38,9 @@ PersistentTreeMap::PersistentTreeMap()
 
 PersistentTreeMap::PersistentTreeMap(TreeNode* root, size_t count)
     : root_(root), count_(count) {
-    if (root_) root_->addRef();
+    // Note: root should come in with refcount=1 from insert()/remove()
+    // We're taking ownership, so we don't need to addRef
+    // The destructor will call release() to decrement back to 0
 }
 
 PersistentTreeMap::PersistentTreeMap(const PersistentTreeMap& other)
@@ -112,7 +114,7 @@ TreeNode* PersistentTreeMap::insert(TreeNode* node, const py::object& key, const
     if (node == nullptr) {
         inserted = true;
         TreeNode* newNode = new TreeNode(key, val, Color::RED);
-        newNode->addRef();
+        // Don't call addRef() - node created with refcount=1 for the caller
         return newNode;
     }
 
@@ -137,7 +139,7 @@ TreeNode* PersistentTreeMap::insert(TreeNode* node, const py::object& key, const
     TreeNode* balanced = balance(newNode);
     if (balanced != newNode) {
         newNode->release();
-        balanced->addRef();
+        // Don't call addRef() - balance() returns a node with refcount=1
     }
 
     return balanced;
@@ -298,7 +300,7 @@ TreeNode* PersistentTreeMap::rotateLeft(TreeNode* node) const {
 
     // newX gets newNode as left and x's right
     newX->left = newNode;
-    newNode->addRef();
+    // Don't call addRef() on newNode - we're transferring ownership (refcount already 1)
     newX->right = x->right;
     if (newX->right) newX->right->addRef();
 
@@ -327,7 +329,7 @@ TreeNode* PersistentTreeMap::rotateRight(TreeNode* node) const {
     newX->left = x->left;
     if (newX->left) newX->left->addRef();
     newX->right = newNode;
-    newNode->addRef();
+    // Don't call addRef() on newNode - we're transferring ownership (refcount already 1)
 
     newX->color = newNode->color;
     newNode->color = Color::RED;
@@ -344,7 +346,7 @@ TreeNode* PersistentTreeMap::flipColors(TreeNode* node) const {
         newLeft->color = newLeft->color == Color::RED ? Color::BLACK : Color::RED;
         newNode->left->release();
         newNode->left = newLeft;
-        newLeft->addRef();
+        // Don't call addRef() - we're transferring ownership (refcount already 1)
     }
 
     if (newNode->right) {
@@ -352,7 +354,7 @@ TreeNode* PersistentTreeMap::flipColors(TreeNode* node) const {
         newRight->color = newRight->color == Color::RED ? Color::BLACK : Color::RED;
         newNode->right->release();
         newNode->right = newRight;
-        newRight->addRef();
+        // Don't call addRef() - we're transferring ownership (refcount already 1)
     }
 
     return newNode;
@@ -360,13 +362,16 @@ TreeNode* PersistentTreeMap::flipColors(TreeNode* node) const {
 
 TreeNode* PersistentTreeMap::balance(TreeNode* node) const {
     TreeNode* current = node;
+    bool currentIsTemp = false;  // Track if current is a temporary we need to clean up
 
     // Right-leaning red - rotate left
     if (current->right && current->right->isRed() &&
         (!current->left || current->left->isBlack())) {
         TreeNode* newCurrent = rotateLeft(current);
-        newCurrent->addRef();  // AddRef for our ownership
-        if (current != node) current->release();  // Release old current if it's not the input
+        // rotateLeft returns a new node with refcount 0
+        // We don't need to release 'current' here because it's either 'node' (owned by caller)
+        // or will be cleaned up at the end if it's a temp
+        currentIsTemp = true;
         current = newCurrent;
     }
 
@@ -374,8 +379,11 @@ TreeNode* PersistentTreeMap::balance(TreeNode* node) const {
     if (current->left && current->left->isRed() &&
         current->left->left && current->left->left->isRed()) {
         TreeNode* newCurrent = rotateRight(current);
-        newCurrent->addRef();  // AddRef for our ownership
-        if (current != node) current->release();  // Release old current if it's not the input
+        if (currentIsTemp && current != node) {
+            // Current is a temporary from previous rotation, release it
+            current->release();
+        }
+        currentIsTemp = true;
         current = newCurrent;
     }
 
@@ -383,8 +391,11 @@ TreeNode* PersistentTreeMap::balance(TreeNode* node) const {
     if (current->left && current->left->isRed() &&
         current->right && current->right->isRed()) {
         TreeNode* newCurrent = flipColors(current);
-        newCurrent->addRef();  // AddRef for our ownership
-        if (current != node) current->release();  // Release old current if it's not the input
+        if (currentIsTemp && current != node) {
+            // Current is a temporary from previous rotation, release it
+            current->release();
+        }
+        currentIsTemp = true;
         current = newCurrent;
     }
 

@@ -222,7 +222,7 @@ PYBIND11_MODULE(pypersistent, m) {
                    "    A new PersistentMap containing the keyword arguments");
 
     // Module-level documentation
-    m.attr("__version__") = "1.0.0";
+    m.attr("__version__") = "1.0.1";
     m.attr("__doc__") = R"doc(
         Persistent Hash Map (HAMT) Implementation in C++
 

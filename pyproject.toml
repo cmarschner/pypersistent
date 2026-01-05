@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pypersistent"
-version = "1.0.1"
-description = "High-performance persistent (immutable) hash map for Python"
+version = "2.0.0a0"
+description = "High-performance persistent (immutable) data structures for Python"
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}

@@ -45,6 +45,10 @@ ext_modules = [
         "pypersistent",
         sources=[
             "src/persistent_map.cpp",
+            "src/persistent_array_map.cpp",
+            "src/persistent_hash_set.cpp",
+            "src/persistent_vector.cpp",
+            "src/persistent_tree_map.cpp",
             "src/bindings.cpp",
         ],
         include_dirs=["src"],
@@ -81,10 +85,10 @@ Example:
 
 setup(
     name="pypersistent",
-    version="1.0.0",
+    version="2.0.0a0",
     author="Clemens Marschner",
     author_email="clemens@marschner.com",
-    description="High-performance persistent hash map (HAMT) in C++",
+    description="High-performance persistent data structures (HAMT, RB-Tree, Vector, Set) in C++",
     long_description=long_description,
     long_description_content_type="text/plain",
     url="https://github.com/cmarschner/pypersistent",

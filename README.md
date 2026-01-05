@@ -1,6 +1,6 @@
 # PyPersistent
 
-A high-performance persistent (immutable) hash map implementation for Python, written in C++.
+A high-performance collection of persistent (immutable) data structures for Python, written in C++.
 
 ## Features
 
@@ -11,6 +11,97 @@ A high-performance persistent (immutable) hash map implementation for Python, wr
 - **Python 3.13+ Free-Threading Ready**: Lock-free design with atomic reference counting for true parallelism
 - **Memory Efficient**: Structural sharing minimizes memory overhead
 - **Dual Interface**: Both functional (Clojure-style) and Pythonic APIs
+
+## Data Structures
+
+PyPersistent provides five core persistent data structures:
+
+### PersistentMap
+**Unordered key-value map** based on Hash Array Mapped Trie (HAMT).
+
+- **Use for**: General-purpose dictionary needs with immutability
+- **Time complexity**: O(log₃₂ n) ≈ 6 steps for 1M elements
+- **Features**: Fast lookups, structural sharing, bulk merge operations
+- **Example**:
+  ```python
+  from pypersistent import PersistentMap
+
+  m = PersistentMap.create(name='Alice', age=30)
+  m2 = m.set('city', 'NYC')
+  m3 = m | {'role': 'developer'}  # Merge
+  ```
+
+### PersistentTreeMap
+**Sorted key-value map** based on Left-Leaning Red-Black Tree.
+
+- **Use for**: Ordered data, range queries, min/max operations
+- **Time complexity**: O(log₂ n) for all operations
+- **Features**: Sorted iteration, range queries (subseq/rsubseq), first/last
+- **Example**:
+  ```python
+  from pypersistent import PersistentTreeMap
+
+  m = PersistentTreeMap.from_dict({3: 'c', 1: 'a', 2: 'b'})
+  list(m.keys())  # [1, 2, 3] - always sorted
+
+  # Range queries
+  sub = m.subseq(start=1, end=2, start_inclusive=True, end_inclusive=False)
+  list(sub.keys())  # [1]
+
+  # Min/max
+  m.first()  # (1, 'a')
+  m.last()   # (3, 'c')
+  ```
+
+### PersistentVector
+**Indexed sequence** based on bit-partitioned vector trie (RRB-Tree variant).
+
+- **Use for**: Ordered sequences with efficient random access and append
+- **Time complexity**: O(log₃₂ n) for get/set, O(1) for append
+- **Features**: Fast indexed access, efficient append, slicing
+- **Example**:
+  ```python
+  from pypersistent import PersistentVector
+
+  v = PersistentVector.create(1, 2, 3)
+  v2 = v.conj(4)  # Append
+  v3 = v2.assoc(0, 10)  # Update index 0
+  v[1]  # 2 - indexed access
+  ```
+
+### PersistentHashSet
+**Unordered set** based on HAMT (same as PersistentMap).
+
+- **Use for**: Unique collection of items, set operations
+- **Time complexity**: O(log₃₂ n) for add/remove/contains
+- **Features**: Fast membership testing, set operations (union, intersection, difference)
+- **Example**:
+  ```python
+  from pypersistent import PersistentHashSet
+
+  s = PersistentHashSet.create(1, 2, 3)
+  s2 = s.conj(4)  # Add
+  s3 = s.disj(2)  # Remove
+  2 in s  # True
+  ```
+
+### PersistentArrayMap
+**Small map optimization** using array of key-value pairs.
+
+- **Use for**: Maps with < 8 entries (automatic optimization)
+- **Time complexity**: O(n) linear scan, but faster than HAMT for tiny maps
+- **Features**: Lower memory overhead, faster for very small maps
+- **Note**: Typically used internally; PersistentMap automatically uses this for small maps
+
+## Choosing the Right Data Structure
+
+| Need | Use | Why |
+|------|-----|-----|
+| General key-value storage | **PersistentMap** | Fastest for unordered data |
+| Sorted keys / range queries | **PersistentTreeMap** | Maintains sort order, supports ranges |
+| Indexed sequence | **PersistentVector** | Fast random access and append |
+| Unique items / set operations | **PersistentHashSet** | Membership testing, set algebra |
+| Very small maps (< 8 items) | **PersistentArrayMap** | Lower overhead for tiny maps |
 
 ## Performance
 
@@ -121,117 +212,234 @@ python setup.py install
 
 ## Usage
 
-### Functional Style (Clojure-inspired)
+### PersistentMap - Hash Map
 
 ```python
 from pypersistent import PersistentMap
 
-# Create empty map
-m = PersistentMap()
-
-# Add entries (returns new map)
-m2 = m.assoc('name', 'Alice').assoc('age', 30)
-
-# Remove entries
-m3 = m2.dissoc('age')
-
-# Get values
-name = m2.get('name')  # 'Alice'
-age = m2.get('age', 0)  # 30
-
-# Check membership
-'name' in m2  # True
-
-# Original unchanged
-len(m)   # 0
-len(m2)  # 2
-```
-
-### Pythonic Style
-
-```python
-from pypersistent import PersistentMap
-
-# Create from dict or kwargs
+# Create
 m = PersistentMap.create(name='Alice', age=30)
 m = PersistentMap.from_dict({'name': 'Alice', 'age': 30})
 
-# Dict-like operations (but returns new map!)
-m2 = m.set('city', 'NYC')
-m3 = m.delete('age')
-m4 = m.update({'height': 165, 'weight': 60})
-m5 = m | {'extra': 'data'}  # Merge operator
+# Add/update (functional style)
+m2 = m.assoc('city', 'NYC')
 
-# Access like dict
-name = m['name']  # Raises KeyError if not found
-name = m.get('name', 'default')  # With default
+# Add/update (Pythonic style)
+m2 = m.set('city', 'NYC')
+m3 = m | {'role': 'developer'}  # Merge
+
+# Get
+name = m['name']  # Raises KeyError if missing
+name = m.get('name', 'default')
+
+# Remove
+m4 = m.dissoc('age')  # Functional
+m4 = m.delete('age')  # Pythonic
+
+# Check membership
+'name' in m  # True
 
 # Iterate
-for key in m:
-    print(key, m[key])
-
 for key, value in m.items():
     print(key, value)
 ```
 
-### Complete API
+### PersistentTreeMap - Sorted Map
 
-**Core operations (functional style):**
-- `assoc(key, val)` - Add/update key
-- `dissoc(key)` - Remove key
-- `get(key, default=None)` - Get value
-- `contains(key)` - Check membership
+```python
+from pypersistent import PersistentTreeMap
 
-**Pythonic aliases:**
-- `set(key, val)` - Alias for `assoc`
-- `delete(key)` - Alias for `dissoc`
-- `update(mapping)` - Bulk merge
-- `merge(mapping)` - Alias for `update`
-- `m1 | m2` - Merge operator
-- `clear()` - Empty map
-- `copy()` - Returns self (immutable)
+# Create (automatically sorted by keys)
+m = PersistentTreeMap.from_dict({3: 'c', 1: 'a', 2: 'b'})
+list(m.keys())  # [1, 2, 3]
 
-**Standard dict protocol:**
-- `m[key]` - Get item (raises KeyError)
-- `key in m` - Membership test
-- `len(m)` - Size
-- `for k in m` - Iterate keys
+# Same API as PersistentMap
+m2 = m.assoc(4, 'd')
+m3 = m.dissoc(1)
+
+# Sorted-specific operations
+first_entry = m.first()  # (1, 'a')
+last_entry = m.last()    # (3, 'c')
+
+# Range queries
+sub = m.subseq(start=1, end=3)  # Keys 1-2 (end exclusive)
+list(sub.keys())  # [1, 2]
+
+rsub = m.rsubseq(start=3, end=1)  # Reverse order
+list(rsub.keys())  # [3, 2]
+```
+
+### PersistentVector - Indexed Sequence
+
+```python
+from pypersistent import PersistentVector
+
+# Create
+v = PersistentVector.create(1, 2, 3)
+v = PersistentVector.from_list([1, 2, 3])
+
+# Append (functional)
+v2 = v.conj(4)  # [1, 2, 3, 4]
+
+# Update by index
+v3 = v.assoc(0, 10)  # [10, 2, 3]
+
+# Access by index
+first = v[0]  # 1
+last = v[-1]  # 3
+
+# Slice
+sub = v[1:3]  # PersistentVector([2, 3])
+
+# Iterate
+for item in v:
+    print(item)
+
+# Length
+len(v)  # 3
+```
+
+### PersistentHashSet - Set
+
+```python
+from pypersistent import PersistentHashSet
+
+# Create
+s = PersistentHashSet.create(1, 2, 3)
+s = PersistentHashSet.from_set({1, 2, 3})
+
+# Add
+s2 = s.conj(4)  # {1, 2, 3, 4}
+
+# Remove
+s3 = s.disj(2)  # {1, 3}
+
+# Membership
+2 in s  # True
+
+# Set operations
+s1 = PersistentHashSet.create(1, 2, 3)
+s2 = PersistentHashSet.create(3, 4, 5)
+
+union = s1 | s2  # {1, 2, 3, 4, 5}
+intersection = s1 & s2  # {3}
+difference = s1 - s2  # {1, 2}
+
+# Iterate
+for item in s:
+    print(item)
+```
+
+### API Summary
+
+**Common operations (all data structures):**
+- `create(*args)` - Create from elements
+- `from_X(...)` - Create from Python collection
+- Immutability - all operations return new instances
+- Thread-safe reads - safe to share across threads
+
+**PersistentMap / PersistentTreeMap:**
+- `assoc(k, v)` / `set(k, v)` - Add/update
+- `dissoc(k)` / `delete(k)` - Remove
+- `get(k, default=None)` - Get value
+- `m[k]` - Get (raises KeyError)
+- `k in m` - Membership
 - `keys()`, `values()`, `items()` - Iterators
-- `==`, `!=` - Equality
+- `m1 | m2` - Merge
+
+**PersistentTreeMap only:**
+- `first()` - Min entry
+- `last()` - Max entry
+- `subseq(start, end)` - Range query
+- `rsubseq(start, end)` - Reverse range
+
+**PersistentVector:**
+- `conj(item)` - Append
+- `assoc(idx, val)` - Update by index
+- `v[idx]` - Get by index
+- `v[start:end]` - Slice
+- `len(v)` - Length
+
+**PersistentHashSet:**
+- `conj(item)` - Add
+- `disj(item)` - Remove
+- `item in s` - Membership
+- `s1 | s2` - Union
+- `s1 & s2` - Intersection
+- `s1 - s2` - Difference
 
 ## Use Cases
 
-PersistentMap is ideal when you need:
+**Use persistent data structures when:**
+- Creating multiple versions of data (undo/redo, time-travel, version history)
+- Sharing data across threads without locks or defensive copying
+- Functional programming patterns (immutability, pure functions)
+- Creating modified copies is frequent (structural sharing makes this fast)
+- Python 3.13+ free-threading for true parallelism
 
-- **Multiple versions of data**: Undo/redo, time-travel debugging, version history
-- **Concurrent access**: Share data across threads without locks or defensive copying
-- **Functional programming**: Natural fit for immutable data structures
-- **Copy-on-write semantics**: When creating modified copies is common
+**Use mutable collections when:**
+- Single mutable instance is sufficient
+- Maximum raw construction speed is critical
+- Memory per entry is highly constrained
 
-Use regular `dict` when:
-- You only need one mutable map
-- Maximum raw performance is critical
-- Memory per entry is a constraint
+**Specific use cases:**
+- **Config management**: Share base config, each thread creates customized version
+- **Event sourcing**: Maintain history of all states efficiently
+- **Reactive programming**: Pass immutable state between components
+- **Concurrent caching**: Multiple threads read/update cache without locks
+- **Functional data pipelines**: Transform data through pipeline stages
 
 ## How It Works
 
-PyPersistent implements a **Hash Array Mapped Trie (HAMT)**, the data structure used by:
-- Clojure's persistent maps
-- Scala's immutable maps
-- Haskell's `Data.HashMap`
+PyPersistent implements multiple classic persistent data structures:
 
-Key innovations in this implementation:
+### PersistentMap - Hash Array Mapped Trie (HAMT)
+Based on the HAMT data structure used by Clojure, Scala, and Haskell:
+- 32-way branching tree indexed by hash bits
+- Path copying for immutability
+- Structural sharing between versions
+- `std::shared_ptr` for entry sharing (44x fewer INCREF/DECREF)
+- Inline storage with `std::variant` for cache-friendly access
 
-1. **Entry sharing with `shared_ptr`**: Entries are shared between map versions using shared pointers, reducing INCREF/DECREF operations by 44x
-2. **Inline storage with `std::variant`**: Entries stored by value in node arrays for cache-friendly access
-3. **O(log n) memory iteration**: Tree-walking iterator uses O(log n) stack space instead of materializing all entries
+### PersistentTreeMap - Left-Leaning Red-Black Tree
+Self-balancing binary search tree with:
+- Path copying for immutability
+- Sorted order maintenance (O(log₂ n))
+- Atomic reference counting for node sharing
+- Range query support via tree traversal
+
+### PersistentVector - Bit-Partitioned Trie
+32-way branching tree for indexed access:
+- Path copying for updates
+- Tail optimization for fast append
+- O(log₃₂ n) random access (~6 steps for 1M elements)
+- Efficient slicing via structural sharing
+
+### PersistentHashSet - HAMT-based Set
+Uses PersistentMap internally with:
+- Keys as set elements
+- Same O(log₃₂ n) complexity
+- Set algebra operations
+
+### PersistentArrayMap - Simple Array
+Linear array for tiny maps (< 8 entries):
+- Lower overhead than HAMT for small sizes
+- O(n) operations but faster than tree for n < 8
+- Automatically used by PersistentMap when beneficial
 
 ## Technical Details
 
-- **Time Complexity**: O(log₃₂ n) for all operations (~6 steps for 1M elements)
-- **Space Complexity**: O(n) with structural sharing across versions
-- **Implementation**: C++ with pybind11 bindings
-- **Thread Safety**: Fully thread-safe for reading (immutable)
+**Complexity:**
+- PersistentMap/HashSet: O(log₃₂ n) ≈ 6 steps for 1M elements
+- PersistentTreeMap: O(log₂ n) for all operations
+- PersistentVector: O(log₃₂ n) get/set, O(1) append
+- PersistentArrayMap: O(n) but fast for n < 8
+
+**Implementation:**
+- C++ with pybind11 bindings
+- Atomic reference counting (`std::atomic<int>`)
+- Structural sharing for memory efficiency
+- Thread-safe reads (fully immutable)
 
 ## Python 3.13+ Free-Threading Support
 
@@ -311,11 +519,18 @@ pip install pytest pybind11
 # Build extension
 python setup.py build_ext --inplace
 
-# Run tests
-pytest test_pypersistent.py -v
+# Run all tests
+pytest -v
+
+# Run specific data structure tests
+pytest test_persistent_map.py -v
+pytest test_persistent_tree_map.py -v
+pytest test_persistent_vector.py -v
+pytest test_persistent_hash_set.py -v
 
 # Run performance benchmarks
 python performance_test.py
+python performance_vector.py
 ```
 
 ## License

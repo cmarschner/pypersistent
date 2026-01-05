@@ -85,7 +85,7 @@ Example:
 
 setup(
     name="pypersistent",
-    version="1.0.0",
+    version="2.0.0a0",
     author="Clemens Marschner",
     author_email="clemens@marschner.com",
     description="High-performance persistent hash map (HAMT) in C++",

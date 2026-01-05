@@ -300,19 +300,19 @@ py::list PersistentVector::list() const {
 
 // Slicing
 
-PersistentVector PersistentVector::slice(ssize_t start, ssize_t stop) const {
+PersistentVector PersistentVector::slice(Py_ssize_t start, Py_ssize_t stop) const {
     // Handle negative indices
     if (start < 0) start += count_;
     if (stop < 0) stop += count_;
 
     // Clamp to valid range
     if (start < 0) start = 0;
-    if (stop > static_cast<ssize_t>(count_)) stop = count_;
+    if (stop > static_cast<Py_ssize_t>(count_)) stop = count_;
     if (start >= stop) return PersistentVector();
 
     // Build new vector from slice
     PersistentVector result;
-    for (ssize_t i = start; i < stop; ++i) {
+    for (Py_ssize_t i = start; i < stop; ++i) {
         result = result.conj(nth(i));
     }
     return result;

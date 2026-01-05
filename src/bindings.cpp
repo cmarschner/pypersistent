@@ -788,7 +788,7 @@ PYBIND11_MODULE(pypersistent, m) {
                  // Handle slice
                  if (py::isinstance<py::slice>(key)) {
                      py::slice slice = key.cast<py::slice>();
-                     ssize_t start, stop, step, slicelength;
+                     Py_ssize_t start, stop, step, slicelength;
                      if (!slice.compute(v.size(), &start, &stop, &step, &slicelength)) {
                          throw py::error_already_set();
                      }
@@ -800,12 +800,12 @@ PYBIND11_MODULE(pypersistent, m) {
 
                  // Handle integer index
                  if (py::isinstance<py::int_>(key)) {
-                     ssize_t idx = key.cast<ssize_t>();
+                     Py_ssize_t idx = key.cast<Py_ssize_t>();
                      // Handle negative indices
                      if (idx < 0) {
                          idx += v.size();
                      }
-                     if (idx < 0 || idx >= static_cast<ssize_t>(v.size())) {
+                     if (idx < 0 || idx >= static_cast<Py_ssize_t>(v.size())) {
                          throw py::index_error("PersistentVector index out of range");
                      }
                      return v.nth(idx);

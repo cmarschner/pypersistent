@@ -102,7 +102,7 @@ public:
     py::list list() const;
 
     // Slicing
-    PersistentVector slice(ssize_t start, ssize_t stop) const;
+    PersistentVector slice(Py_ssize_t start, Py_ssize_t stop) const;
 
     // Equality
     bool operator==(const PersistentVector& other) const;

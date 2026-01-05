@@ -224,10 +224,12 @@ TreeNode* PersistentTreeMap::insert(TreeNode* node, const py::object& key, const
         TreeNode* newLeft = insert(node->left, key, val, inserted);
         if (newNode->left) newNode->left->release();
         newNode->left = newLeft;
+        if (newLeft) newLeft->addRef();  // newLeft has refcount=0, newNode now owns it
     } else if (cmp > 0) {
         TreeNode* newRight = insert(node->right, key, val, inserted);
         if (newNode->right) newNode->right->release();
         newNode->right = newRight;
+        if (newRight) newRight->addRef();  // newRight has refcount=0, newNode now owns it
     } else {
         // Key exists, update value
         newNode->value = val;
@@ -294,6 +296,7 @@ TreeNode* PersistentTreeMap::remove(TreeNode* node, const py::object& key, bool&
             TreeNode* newLeft = remove(newNode->left, key, removed);
             if (newNode->left) newNode->left->release();
             newNode->left = newLeft;
+            if (newLeft) newLeft->addRef();  // newLeft has refcount=0, newNode now owns it
         } else {
             removed = false;
         }
@@ -302,6 +305,7 @@ TreeNode* PersistentTreeMap::remove(TreeNode* node, const py::object& key, bool&
             TreeNode* newRight = remove(newNode->right, key, removed);
             if (newNode->right) newNode->right->release();
             newNode->right = newRight;
+            if (newRight) newRight->addRef();  // newRight has refcount=0, newNode now owns it
         } else {
             removed = false;
         }
@@ -335,6 +339,7 @@ TreeNode* PersistentTreeMap::remove(TreeNode* node, const py::object& key, bool&
             TreeNode* newRight = remove(newNode->right, minNode->key, dummy);
             if (newNode->right) newNode->right->release();
             newNode->right = newRight;
+            if (newRight) newRight->addRef();  // newRight has refcount=0, newNode now owns it
         }
     }
 

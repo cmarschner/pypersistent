@@ -88,7 +88,7 @@ setup(
     version="2.0.0a0",
     author="Clemens Marschner",
     author_email="clemens@marschner.com",
-    description="High-performance persistent hash map (HAMT) in C++",
+    description="High-performance persistent data structures (HAMT, RB-Tree, Vector, Set) in C++",
     long_description=long_description,
     long_description_content_type="text/plain",
     url="https://github.com/cmarschner/pypersistent",

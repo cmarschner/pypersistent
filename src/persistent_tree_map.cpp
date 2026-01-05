@@ -2,87 +2,37 @@
 #include <sstream>
 #include <algorithm>
 #include <iostream>
-#include <fstream>
-#include <mutex>
-
-// Debug logging to file - always enabled
-static std::ofstream debug_log;
-static std::mutex debug_mutex;
-static bool debug_initialized = false;
-
-static void init_debug_log() {
-    if (!debug_initialized) {
-        debug_log.open("/tmp/treemap_refcount.log", std::ios::out | std::ios::trunc);
-        debug_initialized = true;
-        debug_log << "=== TreeMap Reference Counting Debug Log ===" << std::endl;
-    }
-}
 
 // TreeNode implementation
 
 TreeNode::TreeNode(const py::object& k, const py::object& v, Color c)
     : key(k), value(v), left(nullptr), right(nullptr), color(c), refcount_(0) {
-    init_debug_log();
-    std::lock_guard<std::mutex> lock(debug_mutex);
-    debug_log << "[TreeNode::new] " << this << " key=" << py::str(k).cast<std::string>()
-              << " refcount=0" << std::endl;
 }
 
 TreeNode::~TreeNode() {
-    {
-        std::lock_guard<std::mutex> lock(debug_mutex);
-        debug_log << "[TreeNode::~TreeNode] " << this << " key=" << py::str(key).cast<std::string>()
-                  << " (releasing children)" << std::endl;
-    }
     if (left) left->release();
     if (right) right->release();
 }
 
 void TreeNode::addRef() {
-    int oldVal = refcount_.fetch_add(1, std::memory_order_relaxed);
-    std::lock_guard<std::mutex> lock(debug_mutex);
-    debug_log << "[TreeNode::addRef] " << this << " key=" << py::str(key).cast<std::string>()
-              << " refcount " << oldVal << " -> " << (oldVal + 1) << std::endl;
+    refcount_.fetch_add(1, std::memory_order_relaxed);
 }
 
 void TreeNode::release() {
     int oldVal = refcount_.fetch_sub(1, std::memory_order_acq_rel);
-    {
-        std::lock_guard<std::mutex> lock(debug_mutex);
-        debug_log << "[TreeNode::release] " << this << " key=" << py::str(key).cast<std::string>()
-                  << " refcount " << oldVal << " -> " << (oldVal - 1);
-        if (oldVal == 1) {
-            debug_log << " [DELETING]";
-        } else if (oldVal <= 0) {
-            debug_log << " [ERROR: UNDERFLOW!]";
-        }
-        debug_log << std::endl;
-    }
     if (oldVal == 1) {
         delete this;
     }
 }
 
 TreeNode* TreeNode::clone() const {
-    {
-        std::lock_guard<std::mutex> lock(debug_mutex);
-        debug_log << "[TreeNode::clone] Cloning " << this << " key=" << py::str(key).cast<std::string>() << std::endl;
-    }
     TreeNode* newNode = new TreeNode(key, value, color);
     newNode->left = left;
     newNode->right = right;
     if (left) {
-        {
-            std::lock_guard<std::mutex> lock(debug_mutex);
-            debug_log << "  (clone adding ref to left child)" << std::endl;
-        }  // Release lock before calling addRef!
         left->addRef();
     }
     if (right) {
-        {
-            std::lock_guard<std::mutex> lock(debug_mutex);
-            debug_log << "  (clone adding ref to right child)" << std::endl;
-        }  // Release lock before calling addRef!
         right->addRef();
     }
     return newNode;
@@ -119,40 +69,23 @@ PersistentTreeMap::PersistentTreeMap(TreeNode* root, size_t count)
     // Root comes in with refcount=0 from insert()/remove()
     // Must call addRef() because destructor will call release()
     if (root_) {
-        {
-            std::lock_guard<std::mutex> lock(debug_mutex);
-            debug_log << "[PersistentTreeMap::PersistentTreeMap] Taking ownership of root " << root_
-                      << " (calling addRef)" << std::endl;
-        }  // Release lock before calling addRef!
         root_->addRef();
     }
 }
 
 PersistentTreeMap::PersistentTreeMap(const PersistentTreeMap& other)
     : root_(other.root_), count_(other.count_) {
-    {
-        std::lock_guard<std::mutex> lock(debug_mutex);
-        debug_log << "[PersistentTreeMap::PersistentTreeMap COPY] Copying tree with root " << root_ << std::endl;
-    }
     if (root_) root_->addRef();
 }
 
 PersistentTreeMap::PersistentTreeMap(PersistentTreeMap&& other) noexcept
     : root_(other.root_), count_(other.count_) {
-    {
-        std::lock_guard<std::mutex> lock(debug_mutex);
-        debug_log << "[PersistentTreeMap::PersistentTreeMap MOVE] Moving tree with root " << root_ << std::endl;
-    }
     other.root_ = nullptr;
     other.count_ = 0;
 }
 
 PersistentTreeMap::~PersistentTreeMap() {
     if (root_) {
-        {
-            std::lock_guard<std::mutex> lock(debug_mutex);
-            debug_log << "[PersistentTreeMap::~PersistentTreeMap] Releasing root " << root_ << std::endl;
-        }  // Release lock before calling release()!
         root_->release();
     }
 }
@@ -200,8 +133,6 @@ PersistentTreeMap PersistentTreeMap::assoc(const py::object& key, const py::obje
     // Ensure root is black
     // newRoot is a brand new tree with refcount=0, we can modify it directly
     if (newRoot && newRoot->isRed()) {
-        std::lock_guard<std::mutex> lock(debug_mutex);
-        debug_log << "[assoc] Fixing root color from RED to BLACK" << std::endl;
         newRoot->color = Color::BLACK;
     }
 
@@ -242,10 +173,6 @@ TreeNode* PersistentTreeMap::insert(TreeNode* node, const py::object& key, const
         // newNode was replaced by balance(), clean up
         // Don't use release() - newNode has refcount=0 from clone()
         // Must nullify children before delete to prevent underflow
-        {
-            std::lock_guard<std::mutex> lock(debug_mutex);
-            debug_log << "[insert] Deleting replaced node after balance" << std::endl;
-        }
         newNode->left = nullptr;
         newNode->right = nullptr;
         delete newNode;
@@ -264,18 +191,12 @@ PersistentTreeMap PersistentTreeMap::dissoc(const py::object& key) const {
         // Key wasn't found, return original map unchanged
         // NOTE: This leaks newRoot tree - small leak, acceptable for now
         // TODO: Fix by having remove() return nullptr when key not found
-        if (newRoot) {
-            std::lock_guard<std::mutex> lock(debug_mutex);
-            debug_log << "[dissoc] Key not found, leaking unused tree (TODO: fix)" << std::endl;
-        }
         return *this;
     }
 
     // Ensure root is black
     // newRoot is a brand new tree with refcount=0, we can modify it directly
     if (newRoot && newRoot->isRed()) {
-        std::lock_guard<std::mutex> lock(debug_mutex);
-        debug_log << "[dissoc] Fixing root color from RED to BLACK" << std::endl;
         newRoot->color = Color::BLACK;
     }
 
@@ -506,10 +427,6 @@ TreeNode* PersistentTreeMap::balance(TreeNode* node) const {
         if (currentIsTemp && current != node) {
             // Current is a temporary from previous rotation with refcount=0
             // Must nullify children before delete to prevent underflow in destructor
-            {
-                std::lock_guard<std::mutex> lock(debug_mutex);
-                debug_log << "[balance] Deleting temp node after rotateRight" << std::endl;
-            }
             current->left = nullptr;
             current->right = nullptr;
             delete current;
@@ -525,10 +442,6 @@ TreeNode* PersistentTreeMap::balance(TreeNode* node) const {
         if (currentIsTemp && current != node) {
             // Current is a temporary from previous rotation with refcount=0
             // Must nullify children before delete to prevent underflow in destructor
-            {
-                std::lock_guard<std::mutex> lock(debug_mutex);
-                debug_log << "[balance] Deleting temp node after flipColors" << std::endl;
-            }
             current->left = nullptr;
             current->right = nullptr;
             delete current;

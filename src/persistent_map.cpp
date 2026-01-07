@@ -948,7 +948,14 @@ PersistentMap PersistentMap::update(const py::object& other) const {
             if (n >= 100) {
                 // Structural merge - O(n + m) instead of O(n * log m)
                 NodeBase* merged = mergeNodes(root_, other_map.root_, 0);
-                return PersistentMap(merged, count_ + n);  // Approximate count, may have overwrites
+                // Count actual entries in merged tree (handles overwrites correctly)
+                size_t actual_count = 0;
+                if (merged) {
+                    merged->iterate([&](const py::object&, const py::object&) {
+                        actual_count++;
+                    });
+                }
+                return PersistentMap(merged, actual_count);
             } else {
                 // Small updates: use iterative assoc (simpler, fine for small n)
                 other_map.root_->iterate([&](const py::object& k, const py::object& v) {
@@ -1027,11 +1034,11 @@ NodeBase* CollisionNode::cloneToHeap() const {
 NodeBase* PersistentMap::mergeNodes(NodeBase* left, NodeBase* right, uint32_t shift) {
     // Handle null cases
     if (!left) {
-        if (right) right->addRef();
+        // Return right without addRef - caller will handle ownership
         return right;
     }
     if (!right) {
-        left->addRef();
+        // Return left without addRef - caller will handle ownership
         return left;
     }
 
@@ -1080,6 +1087,7 @@ NodeBase* PersistentMap::mergeNodes(NodeBase* left, NodeBase* right, uint32_t sh
                         NodeBase* rightChild = std::get<NodeBase*>(rightElem);
                         NodeBase* merged = mergeNodes(leftChild, rightChild, shift + HASH_BITS);
                         newArray.push_back(merged);
+                        merged->addRef();  // Must increment refcount for array ownership
                     } else {
                         // Mixed entry/node - right wins
                         if (std::holds_alternative<std::shared_ptr<Entry>>(rightElem)) {

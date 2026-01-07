@@ -1109,7 +1109,7 @@ PYBIND11_MODULE(pypersistent, m) {
                    "Note: Keys must support < comparison");
 
     // Module-level documentation
-    m.attr("__version__") = "1.0.1";
+    m.attr("__version__") = "2.0.0a1";
     m.attr("__doc__") = R"doc(
         Persistent Hash Map (HAMT) Implementation in C++
 

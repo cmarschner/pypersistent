@@ -85,7 +85,7 @@ Example:
 
 setup(
     name="pypersistent",
-    version="2.0.0a1",
+    version="2.0.0a2",
     author="Clemens Marschner",
     author_email="clemens@marschner.com",
     description="High-performance persistent data structures (HAMT, RB-Tree, Vector, Set) in C++",

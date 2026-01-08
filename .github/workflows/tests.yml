@@ -35,7 +35,7 @@ jobs:
 
       - name: Run tests
         run: |
-          pytest test_persistent_map_cpp.py test_integrity.py -v
+          pytest tests/test_persistent_map_cpp.py tests/test_integrity.py -v
 
       - name: Test import and basic functionality
         run: |

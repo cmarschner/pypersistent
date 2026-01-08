@@ -505,3 +505,154 @@ class TestPersistentTreeMapSpecialCases:
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
+
+
+class TestPersistentTreeMapMergeOperator:
+    """Test | operator for merging TreeMaps with other mappings."""
+    
+    def test_merge_two_treemaps(self):
+        """Test merging two TreeMaps with | operator."""
+        tm1 = PersistentTreeMap().assoc(1, 'a').assoc(2, 'b')
+        tm2 = PersistentTreeMap().assoc(3, 'c').assoc(4, 'd')
+        
+        result = tm1 | tm2
+        
+        assert len(result) == 4
+        assert result.get(1) == 'a'
+        assert result.get(2) == 'b'
+        assert result.get(3) == 'c'
+        assert result.get(4) == 'd'
+        assert isinstance(result, PersistentTreeMap)
+    
+    def test_merge_with_overlap(self):
+        """Test that right side wins on key conflicts."""
+        tm1 = PersistentTreeMap().assoc(1, 'original').assoc(2, 'b')
+        tm2 = PersistentTreeMap().assoc(2, 'UPDATED').assoc(3, 'c')
+        
+        result = tm1 | tm2
+        
+        assert len(result) == 3
+        assert result.get(1) == 'original'
+        assert result.get(2) == 'UPDATED'  # Right side wins
+        assert result.get(3) == 'c'
+    
+    def test_merge_with_dict(self):
+        """Test merging TreeMap with Python dict."""
+        tm = PersistentTreeMap().assoc('a', 1).assoc('b', 2)
+        d = {'c': 3, 'd': 4}
+        
+        result = tm | d
+        
+        assert len(result) == 4
+        assert result.get('a') == 1
+        assert result.get('b') == 2
+        assert result.get('c') == 3
+        assert result.get('d') == 4
+        assert isinstance(result, PersistentTreeMap)
+    
+    def test_merge_with_persistent_map(self):
+        """Test merging TreeMap with PersistentMap (hash-based)."""
+        from pypersistent import PersistentMap
+        
+        tm = PersistentTreeMap().assoc(1, 'a').assoc(2, 'b')
+        pm = PersistentMap.from_dict({3: 'c', 4: 'd'})
+        
+        result = tm | pm
+        
+        assert len(result) == 4
+        assert result.get(1) == 'a'
+        assert result.get(2) == 'b'
+        assert result.get(3) == 'c'
+        assert result.get(4) == 'd'
+        assert isinstance(result, PersistentTreeMap)
+    
+    def test_merge_with_array_map(self):
+        """Test merging TreeMap with PersistentArrayMap."""
+        from pypersistent import PersistentArrayMap
+        
+        tm = PersistentTreeMap().assoc(1, 'a').assoc(2, 'b')
+        am = PersistentArrayMap().assoc(3, 'c').assoc(4, 'd')
+        
+        result = tm | am
+        
+        assert len(result) == 4
+        assert result.get(1) == 'a'
+        assert result.get(2) == 'b'
+        assert result.get(3) == 'c'
+        assert result.get(4) == 'd'
+        assert isinstance(result, PersistentTreeMap)
+    
+    def test_merge_empty_maps(self):
+        """Test merging with empty maps."""
+        tm = PersistentTreeMap().assoc(1, 'a').assoc(2, 'b')
+        empty = PersistentTreeMap()
+        
+        result1 = tm | empty
+        assert len(result1) == 2
+        assert result1.get(1) == 'a'
+        
+        result2 = empty | tm
+        assert len(result2) == 2
+        assert result2.get(1) == 'a'
+    
+    def test_merge_preserves_sorted_order(self):
+        """Test that merged TreeMap maintains sorted order."""
+        tm1 = PersistentTreeMap().assoc(5, 'e').assoc(1, 'a')
+        tm2 = PersistentTreeMap().assoc(3, 'c').assoc(7, 'g')
+        
+        result = tm1 | tm2
+        
+        # Check that iteration is in sorted order
+        keys = list(result.keys_list())
+        assert keys == [1, 3, 5, 7]
+    
+    def test_merge_immutability(self):
+        """Test that original maps are not modified."""
+        tm1 = PersistentTreeMap().assoc(1, 'a').assoc(2, 'b')
+        tm2 = PersistentTreeMap().assoc(3, 'c')
+        
+        result = tm1 | tm2
+        
+        # Original maps unchanged
+        assert len(tm1) == 2
+        assert 3 not in tm1
+        assert len(tm2) == 1
+        assert 1 not in tm2
+        
+        # Result has all entries
+        assert len(result) == 3
+    
+    def test_merge_large_maps(self):
+        """Test merging large TreeMaps."""
+        tm1 = PersistentTreeMap()
+        for i in range(100):
+            tm1 = tm1.assoc(i, f'val{i}')
+        
+        tm2 = PersistentTreeMap()
+        for i in range(50, 150):
+            tm2 = tm2.assoc(i, f'updated{i}')
+        
+        result = tm1 | tm2
+        
+        # Should have 150 unique keys (0-149)
+        assert len(result) == 150
+        
+        # Check some values - right side wins on conflicts
+        assert result.get(0) == 'val0'  # Only in left
+        assert result.get(49) == 'val49'  # Only in left
+        assert result.get(50) == 'updated50'  # Right wins
+        assert result.get(99) == 'updated99'  # Right wins
+        assert result.get(100) == 'updated100'  # Only in right
+    
+    def test_merge_with_incompatible_types_raises(self):
+        """Test that merging with non-mapping raises TypeError."""
+        tm = PersistentTreeMap().assoc(1, 'a')
+        
+        with pytest.raises(TypeError):
+            _ = tm | "not a mapping"
+        
+        with pytest.raises(TypeError):
+            _ = tm | 123
+        
+        with pytest.raises(TypeError):
+            _ = tm | [1, 2, 3]

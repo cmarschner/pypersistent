@@ -324,3 +324,41 @@ class TestPersistentMapEdgeCases:
         merged_values = set((pm1 | pm2).values())
         assert len(merged_keys) == 15000
         assert len(merged_values) == 15000
+
+    def test_large_merge_sorted_items_list(self):
+        """
+        Regression test for merge crash with items_list() + sorted().
+        
+        The bug: After merging large maps (>=100 entries), the count was
+        incorrect (count_ + n instead of actual count), causing items_list()
+        to pre-allocate a list with too many slots. This left trailing None
+        elements that caused a segfault when sorted() tried to compare them.
+        
+        The fix: Count actual entries after merging by iterating the merged tree.
+        """
+        # Create maps with overlapping keys
+        pm1 = PersistentMap.from_dict({x: x for x in range(10000)})
+        pm2 = PersistentMap.from_dict({y: y for y in range(5000, 15000)})
+        
+        # Merge them
+        merged = pm1 | pm2
+        
+        # Verify correct count (15000 not 20000)
+        assert len(merged) == 15000
+        
+        # Get items_list - this used to create list with 20000 slots
+        items = merged.items_list()
+        assert len(items) == 15000
+        
+        # This used to crash trying to sort None elements
+        sorted_items = sorted(items)
+        assert len(sorted_items) == 15000
+        
+        # Verify all items are tuples, not None
+        for item in sorted_items:
+            assert isinstance(item, tuple)
+            assert len(item) == 2
+        
+        # Verify first and last items
+        assert sorted_items[0] == (0, 0)
+        assert sorted_items[-1] == (14999, 14999)

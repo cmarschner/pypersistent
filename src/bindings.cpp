@@ -1157,6 +1157,181 @@ PYBIND11_MODULE(pypersistent, m) {
         .def("__repr__", &PersistentTreeMap::repr,
              "String representation of the sorted map.")
 
+        // Additional methods for API consistency with PersistentMap/ArrayMap
+        .def("items_list", &PersistentTreeMap::items,
+             "Return list of (key, value) tuples in sorted order.\n\n"
+             "Alias for items() - provided for API consistency with PersistentMap.\n\n"
+             "Returns:\n"
+             "    List of (key, value) tuples in ascending key order")
+
+        .def("keys",
+             [](const PersistentTreeMap& m) -> py::iterator {
+                 return py::iter(m.keysList());
+             },
+             "Iterate over keys in sorted order.\n\n"
+             "Returns:\n"
+             "    Iterator over keys in ascending order")
+
+        .def("values",
+             [](const PersistentTreeMap& m) -> py::iterator {
+                 return py::iter(m.valuesList());
+             },
+             "Iterate over values in key-sorted order.\n\n"
+             "Returns:\n"
+             "    Iterator over values ordered by their keys")
+
+        .def("update",
+             [](const PersistentTreeMap& self, py::object other) -> PersistentTreeMap {
+                 // Reuse the __or__ implementation
+                 PersistentTreeMap result = self;
+
+                 // Handle dict
+                 if (py::isinstance<py::dict>(other)) {
+                     py::dict d = other.cast<py::dict>();
+                     for (auto item : d) {
+                         result = result.assoc(
+                             py::reinterpret_borrow<py::object>(item.first),
+                             py::reinterpret_borrow<py::object>(item.second)
+                         );
+                     }
+                 }
+                 // Handle PersistentTreeMap
+                 else if (py::isinstance<PersistentTreeMap>(other)) {
+                     const PersistentTreeMap& other_map = other.cast<const PersistentTreeMap&>();
+                     py::list items = other_map.items();
+                     for (auto item : items) {
+                         py::list pair = item.cast<py::list>();
+                         result = result.assoc(pair[0], pair[1]);
+                     }
+                 }
+                 // Handle PersistentMap
+                 else if (py::isinstance<PersistentMap>(other)) {
+                     const PersistentMap& other_map = other.cast<const PersistentMap&>();
+                     py::list items = other_map.itemsList();
+                     for (auto item : items) {
+                         py::tuple pair = item.cast<py::tuple>();
+                         result = result.assoc(pair[0], pair[1]);
+                     }
+                 }
+                 // Handle PersistentArrayMap
+                 else if (py::isinstance<PersistentArrayMap>(other)) {
+                     const PersistentArrayMap& other_map = other.cast<const PersistentArrayMap&>();
+                     py::list items = other_map.itemsList();
+                     for (auto item : items) {
+                         py::tuple pair = item.cast<py::tuple>();
+                         result = result.assoc(pair[0], pair[1]);
+                     }
+                 }
+                 // Handle any mapping with items() method
+                 else if (py::hasattr(other, "items")) {
+                     py::object items_method = other.attr("items");
+                     py::object items = items_method();
+                     for (auto item : items) {
+                         py::tuple pair = item.cast<py::tuple>();
+                         result = result.assoc(pair[0], pair[1]);
+                     }
+                 }
+                 else {
+                     throw py::type_error("Cannot update PersistentTreeMap with non-mapping type");
+                 }
+
+                 return result;
+             },
+             py::arg("other"),
+             "Update map with entries from another mapping.\n\n"
+             "Args:\n"
+             "    other: A dict, PersistentTreeMap, PersistentMap, PersistentArrayMap, or any mapping\n\n"
+             "Returns:\n"
+             "    A new PersistentTreeMap with entries from both maps (right side wins)\n\n"
+             "Example:\n"
+             "    tm1 = PersistentTreeMap.create(a=1, b=2)\n"
+             "    tm2 = tm1.update({'c': 3, 'd': 4})")
+
+        .def("merge",
+             [](const PersistentTreeMap& self, py::object other) -> PersistentTreeMap {
+                 // Same implementation as update (code duplication for simplicity)
+                 PersistentTreeMap result = self;
+
+                 if (py::isinstance<py::dict>(other)) {
+                     py::dict d = other.cast<py::dict>();
+                     for (auto item : d) {
+                         result = result.assoc(
+                             py::reinterpret_borrow<py::object>(item.first),
+                             py::reinterpret_borrow<py::object>(item.second)
+                         );
+                     }
+                 }
+                 else if (py::isinstance<PersistentTreeMap>(other)) {
+                     const PersistentTreeMap& other_map = other.cast<const PersistentTreeMap&>();
+                     py::list items = other_map.items();
+                     for (auto item : items) {
+                         py::list pair = item.cast<py::list>();
+                         result = result.assoc(pair[0], pair[1]);
+                     }
+                 }
+                 else if (py::isinstance<PersistentMap>(other)) {
+                     const PersistentMap& other_map = other.cast<const PersistentMap&>();
+                     py::list items = other_map.itemsList();
+                     for (auto item : items) {
+                         py::tuple pair = item.cast<py::tuple>();
+                         result = result.assoc(pair[0], pair[1]);
+                     }
+                 }
+                 else if (py::isinstance<PersistentArrayMap>(other)) {
+                     const PersistentArrayMap& other_map = other.cast<const PersistentArrayMap&>();
+                     py::list items = other_map.itemsList();
+                     for (auto item : items) {
+                         py::tuple pair = item.cast<py::tuple>();
+                         result = result.assoc(pair[0], pair[1]);
+                     }
+                 }
+                 else if (py::hasattr(other, "items")) {
+                     py::object items_method = other.attr("items");
+                     py::object items = items_method();
+                     for (auto item : items) {
+                         py::tuple pair = item.cast<py::tuple>();
+                         result = result.assoc(pair[0], pair[1]);
+                     }
+                 }
+                 else {
+                     throw py::type_error("Cannot merge PersistentTreeMap with non-mapping type");
+                 }
+
+                 return result;
+             },
+             py::arg("other"),
+             "Merge with another mapping (alias for update).\n\n"
+             "Args:\n"
+             "    other: A mapping to merge with\n\n"
+             "Returns:\n"
+             "    A new PersistentTreeMap with merged entries")
+
+        .def("clear",
+             [](const PersistentTreeMap&) -> PersistentTreeMap {
+                 return PersistentTreeMap();
+             },
+             "Return an empty PersistentTreeMap.\n\n"
+             "Returns:\n"
+             "    A new empty PersistentTreeMap")
+
+        .def("copy",
+             [](const PersistentTreeMap& self) -> PersistentTreeMap {
+                 return self;  // Immutable, so copy is just a reference
+             },
+             "Create a shallow copy of the map.\n\n"
+             "Since the map is immutable, this returns self.\n\n"
+             "Returns:\n"
+             "    The same PersistentTreeMap instance")
+
+        .def("delete",
+             &PersistentTreeMap::dissoc,
+             py::arg("key"),
+             "Remove key (alias for dissoc).\n\n"
+             "Args:\n"
+             "    key: The key to remove\n\n"
+             "Returns:\n"
+             "    A new PersistentTreeMap without the key")
+
         // Factory methods
         .def_static("from_dict", &PersistentTreeMap::fromDict,
                    py::arg("dict"),

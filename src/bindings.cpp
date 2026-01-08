@@ -1087,6 +1087,73 @@ PYBIND11_MODULE(pypersistent, m) {
              py::arg("other"),
              "Check inequality with another map.")
 
+        .def("__or__",
+             [](const PersistentTreeMap& self, py::object other) -> PersistentTreeMap {
+                 PersistentTreeMap result = self;
+
+                 // Handle dict
+                 if (py::isinstance<py::dict>(other)) {
+                     py::dict d = other.cast<py::dict>();
+                     for (auto item : d) {
+                         result = result.assoc(
+                             py::reinterpret_borrow<py::object>(item.first),
+                             py::reinterpret_borrow<py::object>(item.second)
+                         );
+                     }
+                 }
+                 // Handle PersistentTreeMap
+                 else if (py::isinstance<PersistentTreeMap>(other)) {
+                     const PersistentTreeMap& other_map = other.cast<const PersistentTreeMap&>();
+                     py::list items = other_map.items();
+                     for (auto item : items) {
+                         py::list pair = item.cast<py::list>();
+                         result = result.assoc(pair[0], pair[1]);
+                     }
+                 }
+                 // Handle PersistentMap
+                 else if (py::isinstance<PersistentMap>(other)) {
+                     const PersistentMap& other_map = other.cast<const PersistentMap&>();
+                     py::list items = other_map.itemsList();
+                     for (auto item : items) {
+                         py::tuple pair = item.cast<py::tuple>();
+                         result = result.assoc(pair[0], pair[1]);
+                     }
+                 }
+                 // Handle PersistentArrayMap
+                 else if (py::isinstance<PersistentArrayMap>(other)) {
+                     const PersistentArrayMap& other_map = other.cast<const PersistentArrayMap&>();
+                     py::list items = other_map.itemsList();
+                     for (auto item : items) {
+                         py::tuple pair = item.cast<py::tuple>();
+                         result = result.assoc(pair[0], pair[1]);
+                     }
+                 }
+                 // Handle any mapping with items() method
+                 else if (py::hasattr(other, "items")) {
+                     py::object items_method = other.attr("items");
+                     py::object items = items_method();
+                     for (auto item : items) {
+                         py::tuple pair = item.cast<py::tuple>();
+                         result = result.assoc(pair[0], pair[1]);
+                     }
+                 }
+                 else {
+                     throw py::type_error("Cannot merge PersistentTreeMap with non-mapping type");
+                 }
+
+                 return result;
+             },
+             py::arg("other"),
+             "Merge with another mapping using | operator.\n\n"
+             "Args:\n"
+             "    other: A dict, PersistentTreeMap, PersistentMap, PersistentArrayMap, or any mapping\n\n"
+             "Returns:\n"
+             "    A new PersistentTreeMap with merged entries (right side wins on conflicts)\n\n"
+             "Example:\n"
+             "    tm1 = PersistentTreeMap.create(a=1, b=2)\n"
+             "    tm2 = PersistentTreeMap.create(c=3, d=4)\n"
+             "    tm3 = tm1 | tm2  # PersistentTreeMap({a: 1, b: 2, c: 3, d: 4})")
+
         .def("__repr__", &PersistentTreeMap::repr,
              "String representation of the sorted map.")
 

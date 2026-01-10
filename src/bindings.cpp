@@ -1,11 +1,11 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/operators.h>
 #include <pybind11/stl.h>
-#include "persistent_map.hpp"
+#include "persistent_dict.hpp"
 #include "persistent_array_map.hpp"
-#include "persistent_hash_set.hpp"
-#include "persistent_vector.hpp"
-#include "persistent_tree_map.hpp"
+#include "persistent_set.hpp"
+#include "persistent_list.hpp"
+#include "persistent_sorted_dict.hpp"
 
 namespace py = pybind11;
 

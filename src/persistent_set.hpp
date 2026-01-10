@@ -3,7 +3,7 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 #include <string>
-#include "persistent_map.hpp"
+#include "persistent_dict.hpp"
 
 namespace py = pybind11;
 

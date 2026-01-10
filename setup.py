@@ -44,11 +44,11 @@ ext_modules = [
     Pybind11Extension(
         "pypersistent",
         sources=[
-            "src/persistent_map.cpp",
+            "src/persistent_dict.cpp",
             "src/persistent_array_map.cpp",
-            "src/persistent_hash_set.cpp",
-            "src/persistent_vector.cpp",
-            "src/persistent_tree_map.cpp",
+            "src/persistent_set.cpp",
+            "src/persistent_list.cpp",
+            "src/persistent_sorted_dict.cpp",
             "src/bindings.cpp",
         ],
         include_dirs=["src"],

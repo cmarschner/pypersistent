@@ -1,4 +1,4 @@
-#include "persistent_hash_set.hpp"
+#include "persistent_set.hpp"
 #include <sstream>
 
 // Constructors

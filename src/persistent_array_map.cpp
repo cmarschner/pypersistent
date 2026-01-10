@@ -1,4 +1,5 @@
 #include "persistent_array_map.hpp"
+#include "persistent_dict.hpp"
 #include <sstream>
 #include <stdexcept>
 

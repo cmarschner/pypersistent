@@ -5,7 +5,7 @@
 #include <vector>
 #include <memory>
 #include <string>
-#include "persistent_map.hpp"  // For Entry struct and pmutils
+#include "persistent_dict.hpp"  // For Entry struct and pmutils
 
 namespace py = pybind11;
 

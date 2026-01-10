@@ -346,8 +346,11 @@ std::string PersistentVector::repr() const {
 
         // Limit output for large vectors
         if (i >= 10 && count_ > 12) {
-            oss << ", ... (" << (count_ - 11) << " more)";
-            i = count_ - 2;  // Show last element
+            oss << ", ... (" << (count_ - 11) << " more), ";
+            // Show last element
+            py::object last_repr = py::repr(nth(count_ - 1));
+            oss << last_repr.cast<std::string>();
+            break;
         }
     }
 

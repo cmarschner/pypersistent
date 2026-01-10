@@ -12,7 +12,7 @@ import sys
 import statistics
 
 sys.path.insert(0, 'src')
-from pypersistent import PersistentMap
+from pypersistent import PersistentDict
 from pyrsistent import pmap
 
 
@@ -50,7 +50,7 @@ def benchmark_iteration(n):
 
     # Create test data
     data = {i: i * 2 for i in range(n)}
-    our_map = PersistentMap.from_dict(data)
+    our_map = PersistentDict.from_dict(data)
     pyr_map = pmap(data)
 
     # Test 1: pypersistent items() iterator (current, slow)

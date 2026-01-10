@@ -1,8 +1,8 @@
 """
-Performance comparison between PersistentVector, Python's built-in list, and pyrsistent's pvector.
+Performance comparison between PersistentList, Python's built-in list, and pyrsistent's pvector.
 
 This test suite measures various operations to understand the trade-offs
-between persistent immutable vectors and mutable lists.
+between persistent immutable lists and mutable lists.
 
 Statistical robustness: Each test runs multiple times with variance analysis.
 """
@@ -11,7 +11,7 @@ import time
 import sys
 import statistics
 from typing import Callable, Any
-from pypersistent import PersistentVector
+from pypersistent import PersistentList
 
 # Try to import pyrsistent for comparison
 try:
@@ -94,9 +94,9 @@ def benchmark_append(n: int):
             l.append(i)
         return l
 
-    # PersistentVector
+    # PersistentList
     def pvec_append():
-        v = PersistentVector()
+        v = PersistentList()
         for i in range(n):
             v = v.conj(i)
         return v
@@ -105,7 +105,7 @@ def benchmark_append(n: int):
     pvec_bench = timeit(pvec_append, runs=5)
 
     print(f"list:            {format_result(list_bench)}")
-    print(f"PersistentVector: {format_result(pvec_bench)}")
+    print(f"PersistentList: {format_result(pvec_bench)}")
     ratio = pvec_bench.median / list_bench.median
     print(f"Ratio:           {ratio:.2f}x slower")
 
@@ -125,7 +125,7 @@ def benchmark_append(n: int):
     return list_bench.result, pvec_bench.result
 
 
-def benchmark_index_access(l: list, v: PersistentVector, n: int):
+def benchmark_index_access(l: list, v: PersistentList, n: int):
     """Test random access performance."""
     print(f"\n=== Random Access Test (n={n:,}) ===")
 
@@ -136,7 +136,7 @@ def benchmark_index_access(l: list, v: PersistentVector, n: int):
             total += l[i]
         return total
 
-    # PersistentVector
+    # PersistentList
     def pvec_access():
         total = 0
         for i in range(n):
@@ -147,7 +147,7 @@ def benchmark_index_access(l: list, v: PersistentVector, n: int):
     pvec_bench = timeit(pvec_access, runs=5)
 
     print(f"list:            {format_result(list_bench, show_variance=False)}")
-    print(f"PersistentVector: {format_result(pvec_bench, show_variance=False)}")
+    print(f"PersistentList: {format_result(pvec_bench, show_variance=False)}")
     print(f"Ratio:           {pvec_bench.median / list_bench.median:.2f}x slower")
 
     # pyrsistent if available
@@ -164,7 +164,7 @@ def benchmark_index_access(l: list, v: PersistentVector, n: int):
         print(f"vs pyrsistent:   {pvec_bench.median / pyr_bench.median:.2f}x")
 
 
-def benchmark_update(l: list, v: PersistentVector, n: int):
+def benchmark_update(l: list, v: PersistentList, n: int):
     """Test update performance."""
     print(f"\n=== Update Test (n={n:,}) ===")
     print(f"Updating every 10th element...")
@@ -176,7 +176,7 @@ def benchmark_update(l: list, v: PersistentVector, n: int):
             l_copy[i] = i * 2
         return l_copy
 
-    # PersistentVector - create new version
+    # PersistentList - create new version
     def pvec_update():
         v_copy = v
         for i in range(0, n, 10):
@@ -187,7 +187,7 @@ def benchmark_update(l: list, v: PersistentVector, n: int):
     pvec_bench = timeit(pvec_update, runs=5)
 
     print(f"list (copy):     {format_result(list_bench, show_variance=False)}")
-    print(f"PersistentVector: {format_result(pvec_bench, show_variance=False)}")
+    print(f"PersistentList: {format_result(pvec_bench, show_variance=False)}")
     print(f"Ratio:           {pvec_bench.median / list_bench.median:.2f}x slower")
 
     # pyrsistent if available
@@ -204,7 +204,7 @@ def benchmark_update(l: list, v: PersistentVector, n: int):
         print(f"vs pyrsistent:   {pvec_bench.median / pyr_bench.median:.2f}x")
 
 
-def benchmark_iteration(l: list, v: PersistentVector, n: int):
+def benchmark_iteration(l: list, v: PersistentList, n: int):
     """Test iteration performance."""
     print(f"\n=== Iteration Test (n={n:,}) ===")
 
@@ -215,7 +215,7 @@ def benchmark_iteration(l: list, v: PersistentVector, n: int):
             total += val
         return total
 
-    # PersistentVector
+    # PersistentList
     def pvec_iter():
         total = 0
         for val in v:
@@ -226,7 +226,7 @@ def benchmark_iteration(l: list, v: PersistentVector, n: int):
     pvec_bench = timeit(pvec_iter, runs=5)
 
     print(f"list:            {format_result(list_bench, show_variance=False)}")
-    print(f"PersistentVector: {format_result(pvec_bench, show_variance=False)}")
+    print(f"PersistentList: {format_result(pvec_bench, show_variance=False)}")
     print(f"Ratio:           {pvec_bench.median / list_bench.median:.2f}x slower")
 
     # pyrsistent if available
@@ -243,7 +243,7 @@ def benchmark_iteration(l: list, v: PersistentVector, n: int):
         print(f"vs pyrsistent:   {pvec_bench.median / pyr_bench.median:.2f}x")
 
 
-def benchmark_slice(l: list, v: PersistentVector, n: int):
+def benchmark_slice(l: list, v: PersistentList, n: int):
     """Test slicing performance."""
     print(f"\n=== Slice Test (n={n:,}) ===")
     print(f"Slicing middle third of vector...")
@@ -255,7 +255,7 @@ def benchmark_slice(l: list, v: PersistentVector, n: int):
     def list_slice():
         return l[start_idx:end_idx]
 
-    # PersistentVector
+    # PersistentList
     def pvec_slice():
         return v[start_idx:end_idx]
 
@@ -263,7 +263,7 @@ def benchmark_slice(l: list, v: PersistentVector, n: int):
     pvec_bench = timeit(pvec_slice, runs=5)
 
     print(f"list:            {format_result(list_bench, show_variance=False)}")
-    print(f"PersistentVector: {format_result(pvec_bench, show_variance=False)}")
+    print(f"PersistentList: {format_result(pvec_bench, show_variance=False)}")
     print(f"Ratio:           {pvec_bench.median / list_bench.median:.2f}x slower")
 
     # pyrsistent if available
@@ -277,9 +277,9 @@ def benchmark_slice(l: list, v: PersistentVector, n: int):
         print(f"vs pyrsistent:   {pvec_bench.median / pyr_bench.median:.2f}x")
 
 
-def benchmark_structural_sharing(v: PersistentVector, n: int):
+def benchmark_structural_sharing(v: PersistentList, n: int):
     """
-    Test the key advantage of PersistentVector: creating multiple variants efficiently.
+    Test the key advantage of PersistentList: creating multiple variants efficiently.
     This is where persistent data structures shine - you can cheaply create
     many variations that share most of their structure.
 
@@ -288,7 +288,7 @@ def benchmark_structural_sharing(v: PersistentVector, n: int):
     print(f"\n=== Structural Sharing Test (n={n:,}) ===")
     print("Creating 100 variants with one modification each...")
 
-    # PersistentVector - structural sharing
+    # PersistentList - structural sharing
     def pvec_variants():
         variants = []
         for i in range(100):
@@ -313,8 +313,8 @@ def benchmark_structural_sharing(v: PersistentVector, n: int):
     ratio = list_bench.median / pvec_bench.median
 
     print(f"list (copy):     {format_result(list_bench)}")
-    print(f"PersistentVector: {format_result(pvec_bench)}")
-    print(f"Ratio:           {ratio:.2f}x faster (PersistentVector wins!)")
+    print(f"PersistentList: {format_result(pvec_bench)}")
+    print(f"Ratio:           {ratio:.2f}x faster (PersistentList wins!)")
 
     # Always show variance for this critical benchmark
     print(f"  Statistics:")
@@ -349,9 +349,9 @@ def benchmark_from_list(n: int):
     def list_from_list():
         return list(source_list)
 
-    # PersistentVector - build from list
+    # PersistentList - build from list
     def pvec_from_list():
-        return PersistentVector.from_list(source_list)
+        return PersistentList.from_list(source_list)
 
     # Use robust statistical benchmarking with 7 runs
     list_bench = timeit(list_from_list, runs=7)
@@ -360,7 +360,7 @@ def benchmark_from_list(n: int):
     ratio = pvec_bench.median / list_bench.median
 
     print(f"list.copy():                {format_result(list_bench)}")
-    print(f"PersistentVector.from_list: {format_result(pvec_bench)}")
+    print(f"PersistentList.from_list: {format_result(pvec_bench)}")
     print(f"Ratio:                      {ratio:.2f}x slower")
 
     # Always show variance for this critical benchmark
@@ -379,7 +379,7 @@ def benchmark_from_list(n: int):
         print(f"vs pyrsistent:              {pvec_bench.median / pyr_bench.median:.2f}x")
 
 
-def benchmark_contains(l: list, v: PersistentVector, n: int):
+def benchmark_contains(l: list, v: PersistentList, n: int):
     """Test membership checking performance."""
     print(f"\n=== Contains Test (n={n:,}) ===")
     print("Checking first 100 elements...")
@@ -392,7 +392,7 @@ def benchmark_contains(l: list, v: PersistentVector, n: int):
                 count += 1
         return count
 
-    # PersistentVector
+    # PersistentList
     def pvec_contains():
         count = 0
         for i in range(min(100, n)):
@@ -404,12 +404,12 @@ def benchmark_contains(l: list, v: PersistentVector, n: int):
     pvec_bench = timeit(pvec_contains, runs=5)
 
     print(f"list:            {format_result(list_bench, show_variance=False)}")
-    print(f"PersistentVector: {format_result(pvec_bench, show_variance=False)}")
+    print(f"PersistentList: {format_result(pvec_bench, show_variance=False)}")
     print(f"Ratio:           {pvec_bench.median / list_bench.median:.2f}x slower")
     print("Note: Contains is O(n) for both - use sets for O(1) membership")
 
 
-def benchmark_pop(v: PersistentVector, n: int):
+def benchmark_pop(v: PersistentList, n: int):
     """Test pop (remove last) performance."""
     print(f"\n=== Pop Test (n={n:,}) ===")
     print("Removing last 100 elements...")
@@ -421,7 +421,7 @@ def benchmark_pop(v: PersistentVector, n: int):
             l = l[:-1]  # Slice to create new list
         return l
 
-    # PersistentVector
+    # PersistentList
     def pvec_pop():
         v_copy = v
         for _ in range(100):
@@ -432,14 +432,14 @@ def benchmark_pop(v: PersistentVector, n: int):
     pvec_bench = timeit(pvec_pop, runs=5)
 
     print(f"list (slice):    {format_result(list_bench, show_variance=False)}")
-    print(f"PersistentVector: {format_result(pvec_bench, show_variance=False)}")
+    print(f"PersistentList: {format_result(pvec_bench, show_variance=False)}")
     print(f"Ratio:           {pvec_bench.median / list_bench.median:.2f}x slower")
 
 
 def run_benchmark_suite(sizes: list[int]):
     """Run complete benchmark suite for different sizes."""
     print("=" * 70)
-    print("PERSISTENT VECTOR vs PYTHON LIST - PERFORMANCE COMPARISON")
+    print("PERSISTENT LIST vs PYTHON LIST - PERFORMANCE COMPARISON")
     print("=" * 70)
 
     if HAS_PYRSISTENT:
@@ -470,7 +470,7 @@ def run_benchmark_suite(sizes: list[int]):
     print("SUMMARY")
     print("=" * 70)
     print("""
-PersistentVector Trade-offs:
+PersistentList Trade-offs:
 
 ADVANTAGES:
   - Immutability: Thread-safe, no defensive copying needed
@@ -484,7 +484,7 @@ DISADVANTAGES:
   - Slower raw performance for individual operations
   - Higher constant factors due to tree structure
   - More memory per entry (node overhead + Python objects)
-  - Contains is O(n) (use PersistentHashSet for O(log n))
+  - Contains is O(n) (use PersistentSet for O(log n))
 
 USE CASES:
   - When you need multiple versions of sequential data

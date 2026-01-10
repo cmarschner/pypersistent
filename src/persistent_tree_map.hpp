@@ -11,7 +11,7 @@ namespace py = pybind11;
 
 // Forward declarations
 class TreeNode;
-class PersistentTreeMap;
+class PersistentSortedDict;
 class TreeMapIterator;
 
 // Color for red-black tree nodes
@@ -41,25 +41,25 @@ private:
     std::atomic<int> refcount_;
 };
 
-// PersistentTreeMap - Immutable sorted map using red-black tree
-class PersistentTreeMap {
+// PersistentSortedDict - Immutable sorted map using red-black tree
+class PersistentSortedDict {
     friend class TreeMapIterator;
 
 public:
     // Constructors
-    PersistentTreeMap();
-    PersistentTreeMap(TreeNode* root, size_t count);
-    PersistentTreeMap(const PersistentTreeMap& other);
-    PersistentTreeMap(PersistentTreeMap&& other) noexcept;
-    ~PersistentTreeMap();
+    PersistentSortedDict();
+    PersistentSortedDict(TreeNode* root, size_t count);
+    PersistentSortedDict(const PersistentSortedDict& other);
+    PersistentSortedDict(PersistentSortedDict&& other) noexcept;
+    ~PersistentSortedDict();
 
     // Assignment
-    PersistentTreeMap& operator=(const PersistentTreeMap& other);
-    PersistentTreeMap& operator=(PersistentTreeMap&& other) noexcept;
+    PersistentSortedDict& operator=(const PersistentSortedDict& other);
+    PersistentSortedDict& operator=(PersistentSortedDict&& other) noexcept;
 
     // Core operations (functional API)
-    PersistentTreeMap assoc(const py::object& key, const py::object& val) const;
-    PersistentTreeMap dissoc(const py::object& key) const;
+    PersistentSortedDict assoc(const py::object& key, const py::object& val) const;
+    PersistentSortedDict dissoc(const py::object& key) const;
     py::object get(const py::object& key) const;
     py::object get(const py::object& key, const py::object& default_val) const;
     bool contains(const py::object& key) const;
@@ -67,8 +67,8 @@ public:
     // Ordered operations
     py::object first() const;  // Returns [key, value] of smallest key
     py::object last() const;   // Returns [key, value] of largest key
-    PersistentTreeMap subseq(const py::object& start, const py::object& end) const;
-    PersistentTreeMap rsubseq(const py::object& start, const py::object& end) const;
+    PersistentSortedDict subseq(const py::object& start, const py::object& end) const;
+    PersistentSortedDict rsubseq(const py::object& start, const py::object& end) const;
 
     // Size and iteration
     size_t size() const { return count_; }
@@ -81,19 +81,19 @@ public:
     py::dict dict() const;
 
     // Equality
-    bool operator==(const PersistentTreeMap& other) const;
-    bool operator!=(const PersistentTreeMap& other) const { return !(*this == other); }
+    bool operator==(const PersistentSortedDict& other) const;
+    bool operator!=(const PersistentSortedDict& other) const { return !(*this == other); }
 
     // String representation
     std::string repr() const;
 
     // Factory methods
-    static PersistentTreeMap fromDict(const py::dict& d);
-    static PersistentTreeMap create(const py::kwargs& kwargs);
+    static PersistentSortedDict fromDict(const py::dict& d);
+    static PersistentSortedDict create(const py::kwargs& kwargs);
 
     // Python protocol support
     py::object pyGetItem(const py::object& key) const;
-    PersistentTreeMap pySetItem(const py::object& key, const py::object& val) const;
+    PersistentSortedDict pySetItem(const py::object& key, const py::object& val) const;
     bool pyContains(const py::object& key) const;
 
 private:
@@ -129,7 +129,7 @@ private:
 // TreeMapIterator - Iterator for ordered traversal
 class TreeMapIterator {
 public:
-    explicit TreeMapIterator(const PersistentTreeMap* map);
+    explicit TreeMapIterator(const PersistentSortedDict* map);
     TreeMapIterator(const TreeMapIterator& other);
     ~TreeMapIterator();
 
@@ -137,7 +137,7 @@ public:
     py::object next();
 
 private:
-    const PersistentTreeMap* map_;
+    const PersistentSortedDict* map_;
     std::vector<TreeNode*> stack_;
 
     void pushLeft(TreeNode* node);

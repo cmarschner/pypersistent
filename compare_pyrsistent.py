@@ -2,7 +2,7 @@
 """
 Comparative Performance Test: pypersistent vs pyrsistent
 
-Compares our C++-based PersistentMap implementation with the pyrsistent
+Compares our C++-based PersistentDict implementation with the pyrsistent
 library's pure Python PMap implementation.
 
 Note: pyrsistent 0.20.0 removed C extensions and is pure Python.
@@ -15,7 +15,7 @@ from typing import Callable, List
 
 # Our implementation
 sys.path.insert(0, 'src')
-from pypersistent import PersistentMap
+from pypersistent import PersistentDict
 
 # pyrsistent library
 from pyrsistent import pmap, PMap
@@ -70,7 +70,7 @@ def compare_from_dict(n: int):
 
     # Our implementation
     our_median, our_cv, our_min, our_max = robust_timer(
-        lambda: PersistentMap.from_dict(data)
+        lambda: PersistentDict.from_dict(data)
     )
 
     # pyrsistent
@@ -96,7 +96,7 @@ def compare_from_dict(n: int):
 def compare_lookup(n: int):
     """Compare lookup performance"""
     data = {i: i * 2 for i in range(n)}
-    our_map = PersistentMap.from_dict(data)
+    our_map = PersistentDict.from_dict(data)
     pyr_map = pmap(data)
 
     lookup_keys = list(range(0, n, max(1, n // 1000)))  # Sample 1000 keys
@@ -129,7 +129,7 @@ def compare_lookup(n: int):
 def compare_assoc(n: int):
     """Compare assoc (set) performance"""
     data = {i: i * 2 for i in range(n)}
-    our_map = PersistentMap.from_dict(data)
+    our_map = PersistentDict.from_dict(data)
     pyr_map = pmap(data)
 
     updates = list(range(0, n, max(1, n // 100)))  # 100 updates
@@ -164,7 +164,7 @@ def compare_assoc(n: int):
 def compare_iteration(n: int):
     """Compare iteration performance"""
     data = {i: i * 2 for i in range(n)}
-    our_map = PersistentMap.from_dict(data)
+    our_map = PersistentDict.from_dict(data)
     pyr_map = pmap(data)
 
     print(f"=== Iteration Test (n={n:,}) ===")
@@ -197,8 +197,8 @@ def compare_merge(n: int):
     data1 = {i: i * 2 for i in range(n // 2)}
     data2 = {i: i * 3 for i in range(n // 2, n)}
 
-    our_map1 = PersistentMap.from_dict(data1)
-    our_map2 = PersistentMap.from_dict(data2)
+    our_map1 = PersistentDict.from_dict(data1)
+    our_map2 = PersistentDict.from_dict(data2)
     pyr_map1 = pmap(data1)
     pyr_map2 = pmap(data2)
 
@@ -228,7 +228,7 @@ def compare_merge(n: int):
 def compare_structural_sharing(n: int):
     """Compare structural sharing cost (creating variants)"""
     data = {i: i * 2 for i in range(n)}
-    our_map = PersistentMap.from_dict(data)
+    our_map = PersistentDict.from_dict(data)
     pyr_map = pmap(data)
 
     variants = 100

@@ -16,7 +16,7 @@ A high-performance collection of persistent (immutable) data structures for Pyth
 
 PyPersistent provides five core persistent data structures:
 
-### PersistentMap
+### PersistentDict
 **Unordered key-value map** based on Hash Array Mapped Trie (HAMT).
 
 - **Use for**: General-purpose dictionary needs with immutability
@@ -24,14 +24,14 @@ PyPersistent provides five core persistent data structures:
 - **Features**: Fast lookups, structural sharing, bulk merge operations
 - **Example**:
   ```python
-  from pypersistent import PersistentMap
+  from pypersistent import PersistentDict
 
-  m = PersistentMap.create(name='Alice', age=30)
+  m = PersistentDict.create(name='Alice', age=30)
   m2 = m.set('city', 'NYC')
   m3 = m | {'role': 'developer'}  # Merge
   ```
 
-### PersistentTreeMap
+### PersistentSortedDict
 **Sorted key-value map** based on Left-Leaning Red-Black Tree.
 
 - **Use for**: Ordered data, range queries, min/max operations
@@ -39,9 +39,9 @@ PyPersistent provides five core persistent data structures:
 - **Features**: Sorted iteration, range queries (subseq/rsubseq), first/last
 - **Example**:
   ```python
-  from pypersistent import PersistentTreeMap
+  from pypersistent import PersistentSortedDict
 
-  m = PersistentTreeMap.from_dict({3: 'c', 1: 'a', 2: 'b'})
+  m = PersistentSortedDict.from_dict({3: 'c', 1: 'a', 2: 'b'})
   list(m.keys())  # [1, 2, 3] - always sorted
 
   # Range queries
@@ -53,7 +53,7 @@ PyPersistent provides five core persistent data structures:
   m.last()   # (3, 'c')
   ```
 
-### PersistentVector
+### PersistentList
 **Indexed sequence** based on bit-partitioned vector trie (RRB-Tree variant).
 
 - **Use for**: Ordered sequences with efficient random access and append
@@ -61,25 +61,25 @@ PyPersistent provides five core persistent data structures:
 - **Features**: Fast indexed access, efficient append, slicing
 - **Example**:
   ```python
-  from pypersistent import PersistentVector
+  from pypersistent import PersistentList
 
-  v = PersistentVector.create(1, 2, 3)
+  v = PersistentList.create(1, 2, 3)
   v2 = v.conj(4)  # Append
   v3 = v2.assoc(0, 10)  # Update index 0
   v[1]  # 2 - indexed access
   ```
 
-### PersistentHashSet
-**Unordered set** based on HAMT (same as PersistentMap).
+### PersistentSet
+**Unordered set** based on HAMT (same as PersistentDict).
 
 - **Use for**: Unique collection of items, set operations
 - **Time complexity**: O(log₃₂ n) for add/remove/contains
 - **Features**: Fast membership testing, set operations (union, intersection, difference)
 - **Example**:
   ```python
-  from pypersistent import PersistentHashSet
+  from pypersistent import PersistentSet
 
-  s = PersistentHashSet.create(1, 2, 3)
+  s = PersistentSet.create(1, 2, 3)
   s2 = s.conj(4)  # Add
   s3 = s.disj(2)  # Remove
   2 in s  # True
@@ -91,17 +91,17 @@ PyPersistent provides five core persistent data structures:
 - **Use for**: Maps with < 8 entries (automatic optimization)
 - **Time complexity**: O(n) linear scan, but faster than HAMT for tiny maps
 - **Features**: Lower memory overhead, faster for very small maps
-- **Note**: Typically used internally; PersistentMap automatically uses this for small maps
+- **Note**: Typically used internally; PersistentDict automatically uses this for small maps
 
 ## Choosing the Right Data Structure
 
 | Need | Use | Why |
 |------|-----|-----|
-| General key-value storage | **PersistentMap** | Fastest for unordered data |
-| Sorted keys / range queries | **PersistentTreeMap** | Maintains sort order, supports ranges |
-| Indexed sequence | **PersistentVector** | Fast random access and append |
-| Unique items / set operations | **PersistentHashSet** | Membership testing, set algebra |
-| Very small maps (< 8 items) | **PersistentArrayMap** | Lower overhead for tiny maps |
+| General key-value storage | **PersistentDict** | Fastest for unordered data |
+| Sorted keys / range queries | **PersistentSortedDict** | Maintains sort order, supports ranges |
+| Indexed sequence | **PersistentList** | Fast random access and append |
+| Unique items / set operations | **PersistentSet** | Membership testing, set algebra |
+| Very small dicts (< 8 items) | **PersistentArrayMap** | Lower overhead for tiny dicts |
 
 ## Performance
 
@@ -149,25 +149,25 @@ pypersistent provides **6-8% faster** bulk operations compared to baseline and i
 
 ### Fast Iteration Methods
 
-For complete iteration over small-medium maps, use materialized list methods:
+For complete iteration over small-medium dicts, use materialized list methods:
 
 ```python
-m = PersistentMap.from_dict({...})
+m = PersistentDict.from_dict({...})
 
-# Fast methods (1.7-3x faster for maps < 100K)
+# Fast methods (1.7-3x faster for dicts < 100K)
 items = m.items_list()   # Returns list of (key, value) tuples
 keys = m.keys_list()     # Returns list of keys
 values = m.values_list() # Returns list of values
 
-# Lazy iterators (better for very large maps or early exit)
+# Lazy iterators (better for very large dicts or early exit)
 for k, v in m.items():   # Generator, O(log n) memory
     ...
 ```
 
 **Performance**:
-- Maps ≤ 10K: **3x faster** with `items_list()`
-- Maps ≤ 100K: **1.7x faster** with `items_list()`
-- Maps > 100K: Use iterator (lazy, memory-efficient)
+- Dicts ≤ 10K: **3x faster** with `items_list()`
+- Dicts ≤ 100K: **1.7x faster** with `items_list()`
+- Dicts > 100K: Use iterator (lazy, memory-efficient)
 
 ### When to Use pypersistent
 
@@ -175,10 +175,10 @@ for k, v in m.items():   # Generator, O(log n) memory
 - Creating multiple versions of data (undo/redo, time-travel)
 - Concurrent access across threads (lock-free reads)
 - Functional programming patterns
-- Merging large maps frequently
+- Merging large dicts frequently
 
 **Use dict when**:
-- Single mutable map is sufficient
+- Single mutable dict is sufficient
 - Maximum raw construction speed is critical
 - Memory per entry is constrained
 
@@ -212,14 +212,14 @@ python setup.py install
 
 ## Usage
 
-### PersistentMap - Hash Map
+### PersistentDict - Hash Map
 
 ```python
-from pypersistent import PersistentMap
+from pypersistent import PersistentDict
 
 # Create
-m = PersistentMap.create(name='Alice', age=30)
-m = PersistentMap.from_dict({'name': 'Alice', 'age': 30})
+m = PersistentDict.create(name='Alice', age=30)
+m = PersistentDict.from_dict({'name': 'Alice', 'age': 30})
 
 # Add/update (functional style)
 m2 = m.assoc('city', 'NYC')
@@ -244,16 +244,16 @@ for key, value in m.items():
     print(key, value)
 ```
 
-### PersistentTreeMap - Sorted Map
+### PersistentSortedDict - Sorted Map
 
 ```python
-from pypersistent import PersistentTreeMap
+from pypersistent import PersistentSortedDict
 
 # Create (automatically sorted by keys)
-m = PersistentTreeMap.from_dict({3: 'c', 1: 'a', 2: 'b'})
+m = PersistentSortedDict.from_dict({3: 'c', 1: 'a', 2: 'b'})
 list(m.keys())  # [1, 2, 3]
 
-# Same API as PersistentMap
+# Same API as PersistentDict
 m2 = m.assoc(4, 'd')
 m3 = m.dissoc(1)
 
@@ -269,14 +269,14 @@ rsub = m.rsubseq(start=3, end=1)  # Reverse order
 list(rsub.keys())  # [3, 2]
 ```
 
-### PersistentVector - Indexed Sequence
+### PersistentList - Indexed Sequence
 
 ```python
-from pypersistent import PersistentVector
+from pypersistent import PersistentList
 
 # Create
-v = PersistentVector.create(1, 2, 3)
-v = PersistentVector.from_list([1, 2, 3])
+v = PersistentList.create(1, 2, 3)
+v = PersistentList.from_list([1, 2, 3])
 
 # Append (functional)
 v2 = v.conj(4)  # [1, 2, 3, 4]
@@ -289,7 +289,7 @@ first = v[0]  # 1
 last = v[-1]  # 3
 
 # Slice
-sub = v[1:3]  # PersistentVector([2, 3])
+sub = v[1:3]  # PersistentList([2, 3])
 
 # Iterate
 for item in v:
@@ -299,14 +299,14 @@ for item in v:
 len(v)  # 3
 ```
 
-### PersistentHashSet - Set
+### PersistentSet - Set
 
 ```python
-from pypersistent import PersistentHashSet
+from pypersistent import PersistentSet
 
 # Create
-s = PersistentHashSet.create(1, 2, 3)
-s = PersistentHashSet.from_set({1, 2, 3})
+s = PersistentSet.create(1, 2, 3)
+s = PersistentSet.from_set({1, 2, 3})
 
 # Add
 s2 = s.conj(4)  # {1, 2, 3, 4}
@@ -318,8 +318,8 @@ s3 = s.disj(2)  # {1, 3}
 2 in s  # True
 
 # Set operations
-s1 = PersistentHashSet.create(1, 2, 3)
-s2 = PersistentHashSet.create(3, 4, 5)
+s1 = PersistentSet.create(1, 2, 3)
+s2 = PersistentSet.create(3, 4, 5)
 
 union = s1 | s2  # {1, 2, 3, 4, 5}
 intersection = s1 & s2  # {3}
@@ -338,7 +338,7 @@ for item in s:
 - Immutability - all operations return new instances
 - Thread-safe reads - safe to share across threads
 
-**PersistentMap / PersistentTreeMap:**
+**PersistentDict / PersistentSortedDict:**
 - `assoc(k, v)` / `set(k, v)` - Add/update
 - `dissoc(k)` / `delete(k)` - Remove
 - `get(k, default=None)` - Get value
@@ -347,20 +347,20 @@ for item in s:
 - `keys()`, `values()`, `items()` - Iterators
 - `m1 | m2` - Merge
 
-**PersistentTreeMap only:**
+**PersistentSortedDict only:**
 - `first()` - Min entry
 - `last()` - Max entry
 - `subseq(start, end)` - Range query
 - `rsubseq(start, end)` - Reverse range
 
-**PersistentVector:**
+**PersistentList:**
 - `conj(item)` - Append
 - `assoc(idx, val)` - Update by index
 - `v[idx]` - Get by index
 - `v[start:end]` - Slice
 - `len(v)` - Length
 
-**PersistentHashSet:**
+**PersistentSet:**
 - `conj(item)` - Add
 - `disj(item)` - Remove
 - `item in s` - Membership
@@ -393,7 +393,7 @@ for item in s:
 
 PyPersistent implements multiple classic persistent data structures:
 
-### PersistentMap - Hash Array Mapped Trie (HAMT)
+### PersistentDict - Hash Array Mapped Trie (HAMT)
 Based on the HAMT data structure used by Clojure, Scala, and Haskell:
 - 32-way branching tree indexed by hash bits
 - Path copying for immutability
@@ -401,38 +401,38 @@ Based on the HAMT data structure used by Clojure, Scala, and Haskell:
 - `std::shared_ptr` for entry sharing (44x fewer INCREF/DECREF)
 - Inline storage with `std::variant` for cache-friendly access
 
-### PersistentTreeMap - Left-Leaning Red-Black Tree
+### PersistentSortedDict - Left-Leaning Red-Black Tree
 Self-balancing binary search tree with:
 - Path copying for immutability
 - Sorted order maintenance (O(log₂ n))
 - Atomic reference counting for node sharing
 - Range query support via tree traversal
 
-### PersistentVector - Bit-Partitioned Trie
+### PersistentList - Bit-Partitioned Trie
 32-way branching tree for indexed access:
 - Path copying for updates
 - Tail optimization for fast append
 - O(log₃₂ n) random access (~6 steps for 1M elements)
 - Efficient slicing via structural sharing
 
-### PersistentHashSet - HAMT-based Set
-Uses PersistentMap internally with:
+### PersistentSet - HAMT-based Set
+Uses PersistentDict internally with:
 - Keys as set elements
 - Same O(log₃₂ n) complexity
 - Set algebra operations
 
 ### PersistentArrayMap - Simple Array
-Linear array for tiny maps (< 8 entries):
+Linear array for tiny dicts (< 8 entries):
 - Lower overhead than HAMT for small sizes
 - O(n) operations but faster than tree for n < 8
-- Automatically used by PersistentMap when beneficial
+- Automatically used by PersistentDict when beneficial
 
 ## Technical Details
 
 **Complexity:**
-- PersistentMap/HashSet: O(log₃₂ n) ≈ 6 steps for 1M elements
-- PersistentTreeMap: O(log₂ n) for all operations
-- PersistentVector: O(log₃₂ n) get/set, O(1) append
+- PersistentDict/HashSet: O(log₃₂ n) ≈ 6 steps for 1M elements
+- PersistentSortedDict: O(log₂ n) for all operations
+- PersistentList: O(log₃₂ n) get/set, O(1) append
 - PersistentArrayMap: O(n) but fast for n < 8
 
 **Implementation:**
@@ -457,10 +457,10 @@ PyPersistent is **fully compatible** with Python 3.13's experimental free-thread
 ```python
 # Python 3.13+ with --disable-gil or PYTHON_GIL=0
 import threading
-from pypersistent import PersistentMap
+from pypersistent import PersistentDict
 
-# Shared base map
-base_config = PersistentMap.create(
+# Shared base dict
+base_config = PersistentDict.create(
     api_url='https://api.example.com',
     timeout=30,
     retries=3
@@ -523,10 +523,10 @@ python setup.py build_ext --inplace
 pytest -v
 
 # Run specific data structure tests
-pytest test_persistent_map.py -v
-pytest test_persistent_tree_map.py -v
-pytest test_persistent_vector.py -v
-pytest test_persistent_hash_set.py -v
+pytest test_persistent_dict.py -v
+pytest test_persistent_sorted_dict.py -v
+pytest test_persistent_list.py -v
+pytest test_persistent_set.py -v
 
 # Run performance benchmarks
 python performance_test.py

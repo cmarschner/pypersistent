@@ -59,12 +59,12 @@ static void deleteTreeWithRefcountZero(TreeNode* node) {
     if (right) deleteTreeWithRefcountZero(right);
 }
 
-// PersistentTreeMap implementation
+// PersistentSortedDict implementation
 
-PersistentTreeMap::PersistentTreeMap()
+PersistentSortedDict::PersistentSortedDict()
     : root_(nullptr), count_(0) {}
 
-PersistentTreeMap::PersistentTreeMap(TreeNode* root, size_t count)
+PersistentSortedDict::PersistentSortedDict(TreeNode* root, size_t count)
     : root_(root), count_(count) {
     // Root comes in with refcount=0 from insert()/remove()
     // Must call addRef() because destructor will call release()
@@ -73,24 +73,24 @@ PersistentTreeMap::PersistentTreeMap(TreeNode* root, size_t count)
     }
 }
 
-PersistentTreeMap::PersistentTreeMap(const PersistentTreeMap& other)
+PersistentSortedDict::PersistentSortedDict(const PersistentSortedDict& other)
     : root_(other.root_), count_(other.count_) {
     if (root_) root_->addRef();
 }
 
-PersistentTreeMap::PersistentTreeMap(PersistentTreeMap&& other) noexcept
+PersistentSortedDict::PersistentSortedDict(PersistentSortedDict&& other) noexcept
     : root_(other.root_), count_(other.count_) {
     other.root_ = nullptr;
     other.count_ = 0;
 }
 
-PersistentTreeMap::~PersistentTreeMap() {
+PersistentSortedDict::~PersistentSortedDict() {
     if (root_) {
         root_->release();
     }
 }
 
-PersistentTreeMap& PersistentTreeMap::operator=(const PersistentTreeMap& other) {
+PersistentSortedDict& PersistentSortedDict::operator=(const PersistentSortedDict& other) {
     if (this != &other) {
         if (other.root_) other.root_->addRef();
         if (root_) root_->release();
@@ -100,7 +100,7 @@ PersistentTreeMap& PersistentTreeMap::operator=(const PersistentTreeMap& other) 
     return *this;
 }
 
-PersistentTreeMap& PersistentTreeMap::operator=(PersistentTreeMap&& other) noexcept {
+PersistentSortedDict& PersistentSortedDict::operator=(PersistentSortedDict&& other) noexcept {
     if (this != &other) {
         if (root_) root_->release();
         root_ = other.root_;
@@ -112,7 +112,7 @@ PersistentTreeMap& PersistentTreeMap::operator=(PersistentTreeMap&& other) noexc
 }
 
 // Key comparison using Python's rich comparison
-int PersistentTreeMap::compareKeys(const py::object& k1, const py::object& k2) {
+int PersistentSortedDict::compareKeys(const py::object& k1, const py::object& k2) {
     // First check equality
     int eq = PyObject_RichCompareBool(k1.ptr(), k2.ptr(), Py_EQ);
     if (eq == 1) return 0;
@@ -126,7 +126,7 @@ int PersistentTreeMap::compareKeys(const py::object& k1, const py::object& k2) {
 
 // Core operations
 
-PersistentTreeMap PersistentTreeMap::assoc(const py::object& key, const py::object& val) const {
+PersistentSortedDict PersistentSortedDict::assoc(const py::object& key, const py::object& val) const {
     bool inserted = false;
     TreeNode* newRoot = insert(root_, key, val, inserted);
 
@@ -137,10 +137,10 @@ PersistentTreeMap PersistentTreeMap::assoc(const py::object& key, const py::obje
     }
 
     size_t newCount = inserted ? count_ + 1 : count_;
-    return PersistentTreeMap(newRoot, newCount);
+    return PersistentSortedDict(newRoot, newCount);
 }
 
-TreeNode* PersistentTreeMap::insert(TreeNode* node, const py::object& key, const py::object& val, bool& inserted) const {
+TreeNode* PersistentSortedDict::insert(TreeNode* node, const py::object& key, const py::object& val, bool& inserted) const {
     if (node == nullptr) {
         inserted = true;
         TreeNode* newNode = new TreeNode(key, val, Color::RED);
@@ -181,7 +181,7 @@ TreeNode* PersistentTreeMap::insert(TreeNode* node, const py::object& key, const
     return balanced;
 }
 
-PersistentTreeMap PersistentTreeMap::dissoc(const py::object& key) const {
+PersistentSortedDict PersistentSortedDict::dissoc(const py::object& key) const {
     if (!root_) return *this;
 
     bool removed = false;
@@ -200,10 +200,10 @@ PersistentTreeMap PersistentTreeMap::dissoc(const py::object& key) const {
         newRoot->color = Color::BLACK;
     }
 
-    return PersistentTreeMap(newRoot, count_ - 1);
+    return PersistentSortedDict(newRoot, count_ - 1);
 }
 
-TreeNode* PersistentTreeMap::remove(TreeNode* node, const py::object& key, bool& removed) const {
+TreeNode* PersistentSortedDict::remove(TreeNode* node, const py::object& key, bool& removed) const {
     if (node == nullptr) {
         removed = false;
         return nullptr;
@@ -267,7 +267,7 @@ TreeNode* PersistentTreeMap::remove(TreeNode* node, const py::object& key, bool&
     return newNode;
 }
 
-TreeNode* PersistentTreeMap::removeMin(TreeNode* node) const {
+TreeNode* PersistentSortedDict::removeMin(TreeNode* node) const {
     if (node == nullptr) return nullptr;
     if (node->left == nullptr) {
         TreeNode* right = node->right;
@@ -283,21 +283,21 @@ TreeNode* PersistentTreeMap::removeMin(TreeNode* node) const {
     return newNode;
 }
 
-TreeNode* PersistentTreeMap::findMin(TreeNode* node) const {
+TreeNode* PersistentSortedDict::findMin(TreeNode* node) const {
     while (node && node->left) {
         node = node->left;
     }
     return node;
 }
 
-TreeNode* PersistentTreeMap::findMax(TreeNode* node) const {
+TreeNode* PersistentSortedDict::findMax(TreeNode* node) const {
     while (node && node->right) {
         node = node->right;
     }
     return node;
 }
 
-TreeNode* PersistentTreeMap::find(TreeNode* node, const py::object& key) const {
+TreeNode* PersistentSortedDict::find(TreeNode* node, const py::object& key) const {
     while (node) {
         int cmp = compareKeys(key, node->key);
         if (cmp < 0) {
@@ -311,24 +311,24 @@ TreeNode* PersistentTreeMap::find(TreeNode* node, const py::object& key) const {
     return nullptr;
 }
 
-py::object PersistentTreeMap::get(const py::object& key) const {
+py::object PersistentSortedDict::get(const py::object& key) const {
     TreeNode* node = find(root_, key);
     if (node) return node->value;
     throw py::key_error(py::str(key).cast<std::string>());
 }
 
-py::object PersistentTreeMap::get(const py::object& key, const py::object& default_val) const {
+py::object PersistentSortedDict::get(const py::object& key, const py::object& default_val) const {
     TreeNode* node = find(root_, key);
     return node ? node->value : default_val;
 }
 
-bool PersistentTreeMap::contains(const py::object& key) const {
+bool PersistentSortedDict::contains(const py::object& key) const {
     return find(root_, key) != nullptr;
 }
 
 // Red-black tree balancing operations
 
-TreeNode* PersistentTreeMap::rotateLeft(TreeNode* node) const {
+TreeNode* PersistentSortedDict::rotateLeft(TreeNode* node) const {
     TreeNode* x = node->right;
     if (!x) return node;
 
@@ -355,7 +355,7 @@ TreeNode* PersistentTreeMap::rotateLeft(TreeNode* node) const {
     return newX;
 }
 
-TreeNode* PersistentTreeMap::rotateRight(TreeNode* node) const {
+TreeNode* PersistentSortedDict::rotateRight(TreeNode* node) const {
     TreeNode* x = node->left;
     if (!x) return node;
 
@@ -382,7 +382,7 @@ TreeNode* PersistentTreeMap::rotateRight(TreeNode* node) const {
     return newX;
 }
 
-TreeNode* PersistentTreeMap::flipColors(TreeNode* node) const {
+TreeNode* PersistentSortedDict::flipColors(TreeNode* node) const {
     TreeNode* newNode = node->clone();
     newNode->color = newNode->color == Color::RED ? Color::BLACK : Color::RED;
 
@@ -405,7 +405,7 @@ TreeNode* PersistentTreeMap::flipColors(TreeNode* node) const {
     return newNode;
 }
 
-TreeNode* PersistentTreeMap::balance(TreeNode* node) const {
+TreeNode* PersistentSortedDict::balance(TreeNode* node) const {
     TreeNode* current = node;
     bool currentIsTemp = false;  // Track if current is a temporary we need to clean up
 
@@ -453,7 +453,7 @@ TreeNode* PersistentTreeMap::balance(TreeNode* node) const {
     return current;
 }
 
-TreeNode* PersistentTreeMap::moveRedLeft(TreeNode* node) const {
+TreeNode* PersistentSortedDict::moveRedLeft(TreeNode* node) const {
     TreeNode* newNode = flipColors(node);
 
     if (newNode->right && newNode->right->left && newNode->right->left->isRed()) {
@@ -484,7 +484,7 @@ TreeNode* PersistentTreeMap::moveRedLeft(TreeNode* node) const {
     return newNode;
 }
 
-TreeNode* PersistentTreeMap::moveRedRight(TreeNode* node) const {
+TreeNode* PersistentSortedDict::moveRedRight(TreeNode* node) const {
     TreeNode* newNode = flipColors(node);
 
     if (newNode->left && newNode->left->left && newNode->left->left->isRed()) {
@@ -512,7 +512,7 @@ TreeNode* PersistentTreeMap::moveRedRight(TreeNode* node) const {
 
 // Ordered operations
 
-py::object PersistentTreeMap::first() const {
+py::object PersistentSortedDict::first() const {
     if (!root_) throw std::runtime_error("first() called on empty map");
     TreeNode* min = findMin(root_);
     py::list result;
@@ -521,7 +521,7 @@ py::object PersistentTreeMap::first() const {
     return result;
 }
 
-py::object PersistentTreeMap::last() const {
+py::object PersistentSortedDict::last() const {
     if (!root_) throw std::runtime_error("last() called on empty map");
     TreeNode* max = findMax(root_);
     py::list result;
@@ -530,29 +530,29 @@ py::object PersistentTreeMap::last() const {
     return result;
 }
 
-PersistentTreeMap PersistentTreeMap::subseq(const py::object& start, const py::object& end) const {
+PersistentSortedDict PersistentSortedDict::subseq(const py::object& start, const py::object& end) const {
     std::vector<std::pair<py::object, py::object>> entries;
     collectRange(root_, start, end, entries);
 
-    PersistentTreeMap result;
+    PersistentSortedDict result;
     for (const auto& entry : entries) {
         result = result.assoc(entry.first, entry.second);
     }
     return result;
 }
 
-PersistentTreeMap PersistentTreeMap::rsubseq(const py::object& start, const py::object& end) const {
+PersistentSortedDict PersistentSortedDict::rsubseq(const py::object& start, const py::object& end) const {
     std::vector<std::pair<py::object, py::object>> entries;
     collectRangeReverse(root_, start, end, entries);
 
-    PersistentTreeMap result;
+    PersistentSortedDict result;
     for (const auto& entry : entries) {
         result = result.assoc(entry.first, entry.second);
     }
     return result;
 }
 
-void PersistentTreeMap::collectRange(TreeNode* node, const py::object& start, const py::object& end,
+void PersistentSortedDict::collectRange(TreeNode* node, const py::object& start, const py::object& end,
                                      std::vector<std::pair<py::object, py::object>>& result) const {
     if (!node) return;
 
@@ -572,7 +572,7 @@ void PersistentTreeMap::collectRange(TreeNode* node, const py::object& start, co
     }
 }
 
-void PersistentTreeMap::collectRangeReverse(TreeNode* node, const py::object& start, const py::object& end,
+void PersistentSortedDict::collectRangeReverse(TreeNode* node, const py::object& start, const py::object& end,
                                            std::vector<std::pair<py::object, py::object>>& result) const {
     if (!node) return;
 
@@ -594,11 +594,11 @@ void PersistentTreeMap::collectRangeReverse(TreeNode* node, const py::object& st
 
 // Iteration and conversion
 
-TreeMapIterator PersistentTreeMap::iter() const {
+TreeMapIterator PersistentSortedDict::iter() const {
     return TreeMapIterator(this);
 }
 
-py::list PersistentTreeMap::keysList() const {
+py::list PersistentSortedDict::keysList() const {
     py::list result;
     TreeMapIterator it(this);
     while (it.hasNext()) {
@@ -608,7 +608,7 @@ py::list PersistentTreeMap::keysList() const {
     return result;
 }
 
-py::list PersistentTreeMap::valuesList() const {
+py::list PersistentSortedDict::valuesList() const {
     py::list result;
     TreeMapIterator it(this);
     while (it.hasNext()) {
@@ -618,7 +618,7 @@ py::list PersistentTreeMap::valuesList() const {
     return result;
 }
 
-py::list PersistentTreeMap::items() const {
+py::list PersistentSortedDict::items() const {
     py::list result;
     TreeMapIterator it(this);
     while (it.hasNext()) {
@@ -627,7 +627,7 @@ py::list PersistentTreeMap::items() const {
     return result;
 }
 
-py::dict PersistentTreeMap::dict() const {
+py::dict PersistentSortedDict::dict() const {
     py::dict result;
     TreeMapIterator it(this);
     while (it.hasNext()) {
@@ -639,7 +639,7 @@ py::dict PersistentTreeMap::dict() const {
 
 // Equality
 
-bool PersistentTreeMap::operator==(const PersistentTreeMap& other) const {
+bool PersistentSortedDict::operator==(const PersistentSortedDict& other) const {
     if (this == &other) return true;
     if (count_ != other.count_) return false;
 
@@ -661,9 +661,9 @@ bool PersistentTreeMap::operator==(const PersistentTreeMap& other) const {
 
 // String representation
 
-std::string PersistentTreeMap::repr() const {
+std::string PersistentSortedDict::repr() const {
     std::ostringstream oss;
-    oss << "PersistentTreeMap({";
+    oss << "PersistentSortedDict({";
 
     TreeMapIterator it(this);
     size_t i = 0;
@@ -688,8 +688,8 @@ std::string PersistentTreeMap::repr() const {
 
 // Factory methods
 
-PersistentTreeMap PersistentTreeMap::fromDict(const py::dict& d) {
-    PersistentTreeMap result;
+PersistentSortedDict PersistentSortedDict::fromDict(const py::dict& d) {
+    PersistentSortedDict result;
     for (auto item : d) {
         result = result.assoc(
             py::reinterpret_borrow<py::object>(item.first),
@@ -699,8 +699,8 @@ PersistentTreeMap PersistentTreeMap::fromDict(const py::dict& d) {
     return result;
 }
 
-PersistentTreeMap PersistentTreeMap::create(const py::kwargs& kwargs) {
-    PersistentTreeMap result;
+PersistentSortedDict PersistentSortedDict::create(const py::kwargs& kwargs) {
+    PersistentSortedDict result;
     for (auto item : kwargs) {
         result = result.assoc(
             py::reinterpret_borrow<py::object>(item.first),
@@ -712,21 +712,21 @@ PersistentTreeMap PersistentTreeMap::create(const py::kwargs& kwargs) {
 
 // Python protocol support
 
-py::object PersistentTreeMap::pyGetItem(const py::object& key) const {
+py::object PersistentSortedDict::pyGetItem(const py::object& key) const {
     return get(key);
 }
 
-PersistentTreeMap PersistentTreeMap::pySetItem(const py::object& key, const py::object& val) const {
+PersistentSortedDict PersistentSortedDict::pySetItem(const py::object& key, const py::object& val) const {
     return assoc(key, val);
 }
 
-bool PersistentTreeMap::pyContains(const py::object& key) const {
+bool PersistentSortedDict::pyContains(const py::object& key) const {
     return contains(key);
 }
 
 // TreeMapIterator implementation
 
-TreeMapIterator::TreeMapIterator(const PersistentTreeMap* map)
+TreeMapIterator::TreeMapIterator(const PersistentSortedDict* map)
     : map_(map) {
     if (map_->root_) {
         pushLeft(map_->root_);

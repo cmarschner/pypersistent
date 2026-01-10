@@ -34,38 +34,38 @@ VectorNode* VectorNode::clone() const {
     return newNode;
 }
 
-// PersistentVector implementation
+// PersistentList implementation
 
-PersistentVector::PersistentVector()
+PersistentList::PersistentList()
     : root_(nullptr)
     , tail_(std::make_shared<std::vector<py::object>>())
     , count_(0)
     , shift_(BITS) {}
 
-PersistentVector::PersistentVector(VectorNode* root,
+PersistentList::PersistentList(VectorNode* root,
                                    std::shared_ptr<std::vector<py::object>> tail,
                                    size_t count, uint32_t shift)
     : root_(root), tail_(tail), count_(count), shift_(shift) {
     if (root_) root_->addRef();
 }
 
-PersistentVector::PersistentVector(const PersistentVector& other)
+PersistentList::PersistentList(const PersistentList& other)
     : root_(other.root_), tail_(other.tail_), count_(other.count_), shift_(other.shift_) {
     if (root_) root_->addRef();
 }
 
-PersistentVector::PersistentVector(PersistentVector&& other) noexcept
+PersistentList::PersistentList(PersistentList&& other) noexcept
     : root_(other.root_), tail_(std::move(other.tail_)),
       count_(other.count_), shift_(other.shift_) {
     other.root_ = nullptr;
     other.count_ = 0;
 }
 
-PersistentVector::~PersistentVector() {
+PersistentList::~PersistentList() {
     if (root_) root_->release();
 }
 
-PersistentVector& PersistentVector::operator=(const PersistentVector& other) {
+PersistentList& PersistentList::operator=(const PersistentList& other) {
     if (this != &other) {
         if (other.root_) other.root_->addRef();
         if (root_) root_->release();
@@ -77,7 +77,7 @@ PersistentVector& PersistentVector::operator=(const PersistentVector& other) {
     return *this;
 }
 
-PersistentVector& PersistentVector::operator=(PersistentVector&& other) noexcept {
+PersistentList& PersistentList::operator=(PersistentList&& other) noexcept {
     if (this != &other) {
         if (root_) root_->release();
         root_ = other.root_;
@@ -92,12 +92,12 @@ PersistentVector& PersistentVector::operator=(PersistentVector&& other) noexcept
 
 // Core operations
 
-PersistentVector PersistentVector::conj(const py::object& val) const {
+PersistentList PersistentList::conj(const py::object& val) const {
     // Fast path: append to tail if there's room
     if (tail_->size() < NODE_SIZE) {
         auto newTail = std::make_shared<std::vector<py::object>>(*tail_);
         newTail->push_back(val);
-        return PersistentVector(root_, newTail, count_ + 1, shift_);
+        return PersistentList(root_, newTail, count_ + 1, shift_);
     }
 
     // Tail is full, need to push it to tree
@@ -121,17 +121,17 @@ PersistentVector PersistentVector::conj(const py::object& val) const {
 
         auto newTail = std::make_shared<std::vector<py::object>>();
         newTail->push_back(val);
-        return PersistentVector(newRoot, newTail, newCount, shift_ + BITS);
+        return PersistentList(newRoot, newTail, newCount, shift_ + BITS);
     }
 
     // Push tail into existing tree
     VectorNode* newRoot = pushTail(root_, shift_, tailNode);
     auto newTail = std::make_shared<std::vector<py::object>>();
     newTail->push_back(val);
-    return PersistentVector(newRoot, newTail, newCount, shift_);
+    return PersistentList(newRoot, newTail, newCount, shift_);
 }
 
-VectorNode* PersistentVector::pushTail(VectorNode* node, uint32_t level, VectorNode* tailNode) const {
+VectorNode* PersistentList::pushTail(VectorNode* node, uint32_t level, VectorNode* tailNode) const {
     // Base case: at level 0, return the tail node (it's a leaf)
     if (level == 0) {
         return tailNode;
@@ -170,7 +170,7 @@ VectorNode* PersistentVector::pushTail(VectorNode* node, uint32_t level, VectorN
     return newNode;
 }
 
-VectorNode* PersistentVector::newPath(uint32_t level, VectorNode* node) const {
+VectorNode* PersistentList::newPath(uint32_t level, VectorNode* node) const {
     if (level == 0) {
         return node;
     }
@@ -181,7 +181,7 @@ VectorNode* PersistentVector::newPath(uint32_t level, VectorNode* node) const {
     return newNode;
 }
 
-py::object PersistentVector::nth(size_t idx) const {
+py::object PersistentList::nth(size_t idx) const {
     if (idx >= count_) {
         throw std::out_of_range("Index out of range");
     }
@@ -195,7 +195,7 @@ py::object PersistentVector::nth(size_t idx) const {
     return getFromTree(idx);
 }
 
-py::object PersistentVector::getFromTree(size_t idx) const {
+py::object PersistentList::getFromTree(size_t idx) const {
     VectorNode* node = root_;
     uint32_t level = shift_;
 
@@ -210,14 +210,14 @@ py::object PersistentVector::getFromTree(size_t idx) const {
     return std::get<py::object>(node->get(idx & MASK));
 }
 
-py::object PersistentVector::get(size_t idx, const py::object& default_val) const {
+py::object PersistentList::get(size_t idx, const py::object& default_val) const {
     if (idx >= count_) {
         return default_val;
     }
     return nth(idx);
 }
 
-PersistentVector PersistentVector::assoc(size_t idx, const py::object& val) const {
+PersistentList PersistentList::assoc(size_t idx, const py::object& val) const {
     if (idx >= count_) {
         throw std::out_of_range("Index out of range");
     }
@@ -231,15 +231,15 @@ PersistentVector PersistentVector::assoc(size_t idx, const py::object& val) cons
 
         auto newTail = std::make_shared<std::vector<py::object>>(*tail_);
         (*newTail)[tailIdx] = val;
-        return PersistentVector(root_, newTail, count_, shift_);
+        return PersistentList(root_, newTail, count_, shift_);
     }
 
     // In tree - path copying
     VectorNode* newRoot = assocInTree(root_, shift_, idx, val);
-    return PersistentVector(newRoot, tail_, count_, shift_);
+    return PersistentList(newRoot, tail_, count_, shift_);
 }
 
-VectorNode* PersistentVector::assocInTree(VectorNode* node, uint32_t level, size_t idx, const py::object& val) const {
+VectorNode* PersistentList::assocInTree(VectorNode* node, uint32_t level, size_t idx, const py::object& val) const {
     VectorNode* newNode = node->clone();
 
     if (level == 0) {
@@ -261,19 +261,19 @@ VectorNode* PersistentVector::assocInTree(VectorNode* node, uint32_t level, size
     return newNode;
 }
 
-PersistentVector PersistentVector::pop() const {
+PersistentList PersistentList::pop() const {
     if (count_ == 0) {
         throw std::runtime_error("Can't pop empty vector");
     }
 
     if (count_ == 1) {
-        return PersistentVector();
+        return PersistentList();
     }
 
     // If tail has more than one element, just remove the last
     if (tail_->size() > 1) {
         auto newTail = std::make_shared<std::vector<py::object>>(tail_->begin(), tail_->end() - 1);
-        return PersistentVector(root_, newTail, count_ - 1, shift_);
+        return PersistentList(root_, newTail, count_ - 1, shift_);
     }
 
     // Need to pull from tree
@@ -286,11 +286,11 @@ PersistentVector PersistentVector::pop() const {
 
 // Iteration and conversion
 
-VectorIterator PersistentVector::iter() const {
+VectorIterator PersistentList::iter() const {
     return VectorIterator(this);
 }
 
-py::list PersistentVector::list() const {
+py::list PersistentList::list() const {
     py::list result;
     for (size_t i = 0; i < count_; ++i) {
         result.append(nth(i));
@@ -300,7 +300,7 @@ py::list PersistentVector::list() const {
 
 // Slicing
 
-PersistentVector PersistentVector::slice(Py_ssize_t start, Py_ssize_t stop) const {
+PersistentList PersistentList::slice(Py_ssize_t start, Py_ssize_t stop) const {
     // Handle negative indices
     if (start < 0) start += count_;
     if (stop < 0) stop += count_;
@@ -308,10 +308,10 @@ PersistentVector PersistentVector::slice(Py_ssize_t start, Py_ssize_t stop) cons
     // Clamp to valid range
     if (start < 0) start = 0;
     if (stop > static_cast<Py_ssize_t>(count_)) stop = count_;
-    if (start >= stop) return PersistentVector();
+    if (start >= stop) return PersistentList();
 
     // Build new vector from slice
-    PersistentVector result;
+    PersistentList result;
     for (Py_ssize_t i = start; i < stop; ++i) {
         result = result.conj(nth(i));
     }
@@ -320,7 +320,7 @@ PersistentVector PersistentVector::slice(Py_ssize_t start, Py_ssize_t stop) cons
 
 // Equality
 
-bool PersistentVector::operator==(const PersistentVector& other) const {
+bool PersistentList::operator==(const PersistentList& other) const {
     if (this == &other) return true;
     if (count_ != other.count_) return false;
 
@@ -335,9 +335,9 @@ bool PersistentVector::operator==(const PersistentVector& other) const {
 
 // String representation
 
-std::string PersistentVector::repr() const {
+std::string PersistentList::repr() const {
     std::ostringstream oss;
-    oss << "PersistentVector([";
+    oss << "PersistentList([";
 
     for (size_t i = 0; i < count_; ++i) {
         if (i > 0) oss << ", ";
@@ -360,16 +360,16 @@ std::string PersistentVector::repr() const {
 
 // Factory methods
 
-PersistentVector PersistentVector::fromList(const py::list& l) {
-    PersistentVector result;
+PersistentList PersistentList::fromList(const py::list& l) {
+    PersistentList result;
     for (auto elem : l) {
         result = result.conj(py::reinterpret_borrow<py::object>(elem));
     }
     return result;
 }
 
-PersistentVector PersistentVector::fromIterable(const py::object& iterable) {
-    PersistentVector result;
+PersistentList PersistentList::fromIterable(const py::object& iterable) {
+    PersistentList result;
     try {
         py::iterator it = py::iter(iterable);
         while (it != py::iterator::sentinel()) {
@@ -382,8 +382,8 @@ PersistentVector PersistentVector::fromIterable(const py::object& iterable) {
     }
 }
 
-PersistentVector PersistentVector::create(const py::args& args) {
-    PersistentVector result;
+PersistentList PersistentList::create(const py::args& args) {
+    PersistentList result;
     for (auto elem : args) {
         result = result.conj(py::reinterpret_borrow<py::object>(elem));
     }

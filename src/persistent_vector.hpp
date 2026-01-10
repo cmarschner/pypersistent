@@ -15,9 +15,9 @@ class VectorNode;
 class VectorIterator;
 
 /**
- * PersistentVector - Indexed sequence with O(log₃₂ n) access
+ * PersistentList - Indexed sequence with O(log₃₂ n) access
  *
- * Implements a persistent (immutable) vector using a 32-way tree structure
+ * Implements a persistent (immutable) list using a 32-way tree structure
  * with tail optimization, similar to Clojure's PersistentVector.
  *
  * Key features:
@@ -31,7 +31,7 @@ class VectorIterator;
  * - Last 0-32 elements stored in separate tail for fast append
  * - Path copying for updates (only O(log n) nodes copied)
  */
-class PersistentVector {
+class PersistentList {
 private:
     VectorNode* root_;                                          // Tree root
     std::shared_ptr<std::vector<py::object>> tail_;            // Last 0-32 elements
@@ -62,35 +62,35 @@ private:
 
 public:
     // Constructors
-    PersistentVector();
-    PersistentVector(VectorNode* root, std::shared_ptr<std::vector<py::object>> tail,
-                     size_t count, uint32_t shift);
+    PersistentList();
+    PersistentList(VectorNode* root, std::shared_ptr<std::vector<py::object>> tail,
+                   size_t count, uint32_t shift);
 
     // Copy constructor
-    PersistentVector(const PersistentVector& other);
+    PersistentList(const PersistentList& other);
 
     // Move constructor
-    PersistentVector(PersistentVector&& other) noexcept;
+    PersistentList(PersistentList&& other) noexcept;
 
     // Destructor
-    ~PersistentVector();
+    ~PersistentList();
 
     // Copy assignment
-    PersistentVector& operator=(const PersistentVector& other);
+    PersistentList& operator=(const PersistentList& other);
 
     // Move assignment
-    PersistentVector& operator=(PersistentVector&& other) noexcept;
+    PersistentList& operator=(PersistentList&& other) noexcept;
 
     // Core operations (functional style)
-    PersistentVector conj(const py::object& val) const;                    // Append
-    PersistentVector assoc(size_t idx, const py::object& val) const;       // Update at index
-    py::object nth(size_t idx) const;                                      // Get at index
-    py::object get(size_t idx, const py::object& default_val) const;       // Get with default
-    PersistentVector pop() const;                                          // Remove last
+    PersistentList conj(const py::object& val) const;                    // Append
+    PersistentList assoc(size_t idx, const py::object& val) const;       // Update at index
+    py::object nth(size_t idx) const;                                    // Get at index
+    py::object get(size_t idx, const py::object& default_val) const;     // Get with default
+    PersistentList pop() const;                                          // Remove last
 
     // Python-friendly aliases
-    PersistentVector append(const py::object& val) const { return conj(val); }
-    PersistentVector set(size_t idx, const py::object& val) const { return assoc(idx, val); }
+    PersistentList append(const py::object& val) const { return conj(val); }
+    PersistentList set(size_t idx, const py::object& val) const { return assoc(idx, val); }
 
     // Size
     size_t size() const { return count_; }
@@ -102,23 +102,23 @@ public:
     py::list list() const;
 
     // Slicing
-    PersistentVector slice(Py_ssize_t start, Py_ssize_t stop) const;
+    PersistentList slice(Py_ssize_t start, Py_ssize_t stop) const;
 
     // Equality
-    bool operator==(const PersistentVector& other) const;
-    bool operator!=(const PersistentVector& other) const { return !(*this == other); }
+    bool operator==(const PersistentList& other) const;
+    bool operator!=(const PersistentList& other) const { return !(*this == other); }
 
     // String representation
     std::string repr() const;
 
     // Factory methods
-    static PersistentVector fromList(const py::list& l);
-    static PersistentVector fromIterable(const py::object& iterable);
-    static PersistentVector create(const py::args& args);
+    static PersistentList fromList(const py::list& l);
+    static PersistentList fromIterable(const py::object& iterable);
+    static PersistentList create(const py::args& args);
 };
 
 /**
- * VectorNode - Internal tree node for PersistentVector
+ * VectorNode - Internal tree node for PersistentList
  *
  * Each node can hold up to 32 children, which can be either:
  * - py::object (leaf values)
@@ -186,15 +186,15 @@ public:
 };
 
 /**
- * VectorIterator - Iterator for PersistentVector
+ * VectorIterator - Iterator for PersistentList
  */
 class VectorIterator {
 private:
-    const PersistentVector* vec_;
+    const PersistentList* vec_;
     size_t index_;
 
 public:
-    VectorIterator(const PersistentVector* vec) : vec_(vec), index_(0) {}
+    VectorIterator(const PersistentList* vec) : vec_(vec), index_(0) {}
 
     bool hasNext() const { return index_ < vec_->size(); }
 

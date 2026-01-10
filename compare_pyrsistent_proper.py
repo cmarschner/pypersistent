@@ -16,7 +16,7 @@ from typing import Callable, Any
 
 # Our implementation
 sys.path.insert(0, 'src')
-from pypersistent import PersistentMap
+from pypersistent import PersistentDict
 
 # pyrsistent library
 from pyrsistent import pmap
@@ -104,7 +104,7 @@ def benchmark_insertion(n: int):
     print(f"=== Insertion Test (n={n:,}) ===")
 
     def our_insert():
-        m = PersistentMap()
+        m = PersistentDict()
         for i in range(n):
             m = m.assoc(i, i * 2)
         return m
@@ -124,7 +124,7 @@ def benchmark_lookup(n: int):
     print(f"=== Lookup Test (n={n:,}) ===")
 
     data = {i: i * 2 for i in range(n)}
-    our_map = PersistentMap.from_dict(data)
+    our_map = PersistentDict.from_dict(data)
     pyr_map = pmap(data)
 
     def our_lookup():
@@ -148,7 +148,7 @@ def benchmark_contains(n: int):
     print(f"=== Contains Test (n={n:,}) ===")
 
     data = {i: i * 2 for i in range(n)}
-    our_map = PersistentMap.from_dict(data)
+    our_map = PersistentDict.from_dict(data)
     pyr_map = pmap(data)
 
     def our_contains():
@@ -174,7 +174,7 @@ def benchmark_update(n: int):
     print(f"=== Update Test (n={n:,}) ===")
 
     data = {i: i * 2 for i in range(n)}
-    our_map = PersistentMap.from_dict(data)
+    our_map = PersistentDict.from_dict(data)
     pyr_map = pmap(data)
 
     def our_update():
@@ -198,7 +198,7 @@ def benchmark_deletion(n: int):
     print(f"=== Deletion Test (n={n:,}) ===")
 
     data = {i: i * 2 for i in range(n)}
-    our_map = PersistentMap.from_dict(data)
+    our_map = PersistentDict.from_dict(data)
     pyr_map = pmap(data)
 
     def our_delete():
@@ -222,7 +222,7 @@ def benchmark_iteration(n: int):
     print(f"=== Iteration Test (n={n:,}) ===")
 
     data = {i: i * 2 for i in range(n)}
-    our_map = PersistentMap.from_dict(data)
+    our_map = PersistentDict.from_dict(data)
     pyr_map = pmap(data)
 
     def our_iterate():
@@ -248,7 +248,7 @@ def benchmark_from_dict(n: int):
     data = {i: i * 2 for i in range(n)}
 
     def our_from_dict():
-        return PersistentMap.from_dict(data)
+        return PersistentDict.from_dict(data)
 
     def pyr_from_dict():
         return pmap(data)
@@ -265,8 +265,8 @@ def benchmark_merge(n: int):
     data1 = {i: i * 2 for i in range(n // 2)}
     data2 = {i: i * 3 for i in range(n // 2, n)}
 
-    our_map1 = PersistentMap.from_dict(data1)
-    our_map2 = PersistentMap.from_dict(data2)
+    our_map1 = PersistentDict.from_dict(data1)
+    our_map2 = PersistentDict.from_dict(data2)
     pyr_map1 = pmap(data1)
     pyr_map2 = pmap(data2)
 
@@ -286,7 +286,7 @@ def benchmark_structural_sharing(n: int):
     print("Creating 100 variants with one modification each...")
 
     data = {i: i * 2 for i in range(n)}
-    our_map = PersistentMap.from_dict(data)
+    our_map = PersistentDict.from_dict(data)
     pyr_map = pmap(data)
 
     def our_variants():

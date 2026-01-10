@@ -41,7 +41,7 @@ PersistentArrayMap PersistentArrayMap::assoc(const py::object& key, const py::ob
     } else {
         // Key doesn't exist
         if (size() >= MAX_SIZE) {
-            throw std::runtime_error("PersistentArrayMap max size exceeded (8 entries). Consider using PersistentMap for larger maps.");
+            throw std::runtime_error("PersistentArrayMap max size exceeded (8 entries). Consider using PersistentDict for larger maps.");
         }
 
         // Copy vector and append
@@ -105,10 +105,10 @@ PersistentArrayMap PersistentArrayMap::update(const py::object& other) const {
         return result;
     }
 
-    // Handle PersistentMap
-    if (py::isinstance<PersistentMap>(other)) {
+    // Handle PersistentDict
+    if (py::isinstance<PersistentDict>(other)) {
         // Use items_list() for efficiency
-        const PersistentMap& otherMap = other.cast<const PersistentMap&>();
+        const PersistentDict& otherMap = other.cast<const PersistentDict&>();
         py::list items = otherMap.itemsList();
         for (auto item : items) {
             py::tuple t = item.cast<py::tuple>();
@@ -127,7 +127,7 @@ PersistentArrayMap PersistentArrayMap::update(const py::object& other) const {
         return result;
     }
 
-    throw std::invalid_argument("update() requires a dict, PersistentArrayMap, PersistentMap, or mapping");
+    throw std::invalid_argument("update() requires a dict, PersistentArrayMap, PersistentDict, or mapping");
 }
 
 // Iteration
@@ -224,7 +224,7 @@ std::string PersistentArrayMap::repr() const {
 // Factory methods
 PersistentArrayMap PersistentArrayMap::fromDict(const py::dict& d) {
     if (d.size() > MAX_SIZE) {
-        throw std::runtime_error("Dictionary too large for PersistentArrayMap (max 8 entries). Use PersistentMap instead.");
+        throw std::runtime_error("Dictionary too large for PersistentArrayMap (max 8 entries). Use PersistentDict instead.");
     }
 
     auto entries = std::make_shared<std::vector<Entry>>();
@@ -240,7 +240,7 @@ PersistentArrayMap PersistentArrayMap::fromDict(const py::dict& d) {
 
 PersistentArrayMap PersistentArrayMap::create(const py::kwargs& kw) {
     if (kw.size() > MAX_SIZE) {
-        throw std::runtime_error("Too many keyword arguments for PersistentArrayMap (max 8). Use PersistentMap instead.");
+        throw std::runtime_error("Too many keyword arguments for PersistentArrayMap (max 8). Use PersistentDict instead.");
     }
 
     auto entries = std::make_shared<std::vector<Entry>>();

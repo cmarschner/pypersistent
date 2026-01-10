@@ -4,7 +4,7 @@
 #include <memory>
 
 // Initialize static sentinel value
-py::object PersistentMap::NOT_FOUND = py::object();
+py::object PersistentDict::NOT_FOUND = py::object();
 
 //=============================================================================
 // BitmapNode Implementation
@@ -511,10 +511,10 @@ std::pair<py::object, py::object> MapIterator::next() {
 }
 
 //=============================================================================
-// PersistentMap Implementation
+// PersistentDict Implementation
 //=============================================================================
 
-PersistentMap PersistentMap::assoc(const py::object& key, const py::object& val) const {
+PersistentDict PersistentDict::assoc(const py::object& key, const py::object& val) const {
     uint32_t hash = pmutils::hashKey(key);
 
     if (root_ == nullptr) {
@@ -523,7 +523,7 @@ PersistentMap PersistentMap::assoc(const py::object& key, const py::object& val)
         std::vector<std::variant<std::shared_ptr<Entry>, NodeBase*>> array;
         array.push_back(std::make_shared<Entry>(key, val));
         NodeBase* newRoot = new BitmapNode(bit_pos, std::move(array));
-        return PersistentMap(newRoot, 1);
+        return PersistentDict(newRoot, 1);
     }
 
     // Check if key already exists
@@ -536,10 +536,10 @@ PersistentMap PersistentMap::assoc(const py::object& key, const py::object& val)
     }
 
     size_t newCount = oldVal.is(NOT_FOUND) ? count_ + 1 : count_;
-    return PersistentMap(newRoot, newCount);
+    return PersistentDict(newRoot, newCount);
 }
 
-PersistentMap PersistentMap::dissoc(const py::object& key) const {
+PersistentDict PersistentDict::dissoc(const py::object& key) const {
     if (root_ == nullptr) {
         return *this;
     }
@@ -553,10 +553,10 @@ PersistentMap PersistentMap::dissoc(const py::object& key) const {
     }
 
     NodeBase* newRoot = root_->dissoc(0, hash, key);
-    return PersistentMap(newRoot, count_ - 1);
+    return PersistentDict(newRoot, count_ - 1);
 }
 
-py::object PersistentMap::get(const py::object& key, const py::object& default_val) const {
+py::object PersistentDict::get(const py::object& key, const py::object& default_val) const {
     if (root_ == nullptr) {
         return default_val;
     }
@@ -567,7 +567,7 @@ py::object PersistentMap::get(const py::object& key, const py::object& default_v
     return result.is(NOT_FOUND) ? default_val : result;
 }
 
-bool PersistentMap::contains(const py::object& key) const {
+bool PersistentDict::contains(const py::object& key) const {
     if (root_ == nullptr) {
         return false;
     }
@@ -577,21 +577,21 @@ bool PersistentMap::contains(const py::object& key) const {
     return !result.is(NOT_FOUND);
 }
 
-KeyIterator PersistentMap::keys() const {
+KeyIterator PersistentDict::keys() const {
     return KeyIterator(root_);
 }
 
-ValueIterator PersistentMap::values() const {
+ValueIterator PersistentDict::values() const {
     return ValueIterator(root_);
 }
 
-ItemIterator PersistentMap::items() const {
+ItemIterator PersistentDict::items() const {
     return ItemIterator(root_);
 }
 
 // Fast materialized iteration - returns pre-allocated list
 // Pre-allocates list with exact size to avoid repeated reallocation
-py::list PersistentMap::itemsList() const {
+py::list PersistentDict::itemsList() const {
     if (!root_ || count_ == 0) {
         return py::list();
     }
@@ -610,7 +610,7 @@ py::list PersistentMap::itemsList() const {
     return result;
 }
 
-py::list PersistentMap::keysList() const {
+py::list PersistentDict::keysList() const {
     if (!root_ || count_ == 0) {
         return py::list();
     }
@@ -628,7 +628,7 @@ py::list PersistentMap::keysList() const {
     return result;
 }
 
-py::list PersistentMap::valuesList() const {
+py::list PersistentDict::valuesList() const {
     if (!root_ || count_ == 0) {
         return py::list();
     }
@@ -646,7 +646,7 @@ py::list PersistentMap::valuesList() const {
     return result;
 }
 
-bool PersistentMap::operator==(const PersistentMap& other) const {
+bool PersistentDict::operator==(const PersistentDict& other) const {
     if (count_ != other.count_) {
         return false;
     }
@@ -683,9 +683,9 @@ bool PersistentMap::operator==(const PersistentMap& other) const {
     return equal;
 }
 
-std::string PersistentMap::repr() const {
+std::string PersistentDict::repr() const {
     std::ostringstream oss;
-    oss << "PersistentMap({";
+    oss << "PersistentDict({";
 
     if (root_ != nullptr) {
         bool first = true;
@@ -712,7 +712,7 @@ std::string PersistentMap::repr() const {
 // Phase 2: Bottom-Up Tree Construction
 // ============================================================================
 
-NodeBase* PersistentMap::buildTreeBulk(std::vector<HashedEntry>& entries,
+NodeBase* PersistentDict::buildTreeBulk(std::vector<HashedEntry>& entries,
                                        size_t start, size_t end, uint32_t shift,
                                        BulkOpArena& arena) {
     size_t count = end - start;
@@ -823,17 +823,17 @@ NodeBase* PersistentMap::buildTreeBulk(std::vector<HashedEntry>& entries,
     return arena.allocate<BitmapNode>(bitmap, std::move(array));
 }
 
-PersistentMap PersistentMap::fromDict(const py::dict& d) {
+PersistentDict PersistentDict::fromDict(const py::dict& d) {
     size_t n = d.size();
 
     // Empty map
     if (n == 0) {
-        return PersistentMap();
+        return PersistentDict();
     }
 
     // Small maps: use current implementation (already fast)
     if (n < 1000) {
-        PersistentMap m;
+        PersistentDict m;
         for (auto item : d) {
             m = m.assoc(py::reinterpret_borrow<py::object>(item.first),
                        py::reinterpret_borrow<py::object>(item.second));
@@ -864,20 +864,20 @@ PersistentMap PersistentMap::fromDict(const py::dict& d) {
     // We need to clone the entire tree from arena to heap.
     NodeBase* heap_root = root ? root->cloneToHeap() : nullptr;
 
-    return PersistentMap(heap_root, n);
+    return PersistentDict(heap_root, n);
 }
 
-PersistentMap PersistentMap::create(const py::kwargs& kw) {
+PersistentDict PersistentDict::create(const py::kwargs& kw) {
     size_t n = kw.size();
 
     // Empty map
     if (n == 0) {
-        return PersistentMap();
+        return PersistentDict();
     }
 
     // Small maps: use current implementation
     if (n < 1000) {
-        PersistentMap m;
+        PersistentDict m;
         for (auto item : kw) {
             m = m.assoc(py::reinterpret_borrow<py::object>(item.first),
                        py::reinterpret_borrow<py::object>(item.second));
@@ -906,13 +906,13 @@ PersistentMap PersistentMap::create(const py::kwargs& kw) {
     // Clone from arena to heap
     NodeBase* heap_root = root ? root->cloneToHeap() : nullptr;
 
-    return PersistentMap(heap_root, n);
+    return PersistentDict(heap_root, n);
 }
 
-PersistentMap PersistentMap::update(const py::object& other) const {
-    PersistentMap result = *this;
+PersistentDict PersistentDict::update(const py::object& other) const {
+    PersistentDict result = *this;
 
-    // Handle dict or PersistentMap
+    // Handle dict or PersistentDict
     if (py::isinstance<py::dict>(other)) {
         py::dict d = other.cast<py::dict>();
         size_t n = d.size();
@@ -939,8 +939,8 @@ PersistentMap PersistentMap::update(const py::object& other) const {
                 result = result.assoc(key, val);
             }
         }
-    } else if (py::isinstance<PersistentMap>(other)) {
-        const PersistentMap& other_map = other.cast<const PersistentMap&>();
+    } else if (py::isinstance<PersistentDict>(other)) {
+        const PersistentDict& other_map = other.cast<const PersistentDict&>();
         size_t n = other_map.count_;
 
         if (other_map.root_) {
@@ -955,7 +955,7 @@ PersistentMap PersistentMap::update(const py::object& other) const {
                         actual_count++;
                     });
                 }
-                return PersistentMap(merged, actual_count);
+                return PersistentDict(merged, actual_count);
             } else {
                 // Small updates: use iterative assoc (simpler, fine for small n)
                 other_map.root_->iterate([&](const py::object& k, const py::object& v) {
@@ -972,7 +972,7 @@ PersistentMap PersistentMap::update(const py::object& other) const {
                 result = result.assoc(kv[0], kv[1]);
             }
         } catch (...) {
-            throw py::type_error("update() requires a dict, PersistentMap, or mapping");
+            throw py::type_error("update() requires a dict, PersistentDict, or mapping");
         }
     }
 
@@ -1031,7 +1031,7 @@ NodeBase* CollisionNode::cloneToHeap() const {
  *
  * Performance: O(n + m) instead of O(n * log m)
  */
-NodeBase* PersistentMap::mergeNodes(NodeBase* left, NodeBase* right, uint32_t shift) {
+NodeBase* PersistentDict::mergeNodes(NodeBase* left, NodeBase* right, uint32_t shift) {
     // Handle null cases
     if (!left) {
         // Return right without addRef - caller will handle ownership

@@ -206,7 +206,7 @@ public:
 };
 
 // Forward declaration
-class PersistentMap;
+class PersistentDict;
 
 // Base iterator for tree traversal (O(log n) memory, not O(n))
 class MapIterator {
@@ -274,8 +274,8 @@ public:
     }
 };
 
-// PersistentMap: Main container class exposing the public API
-class PersistentMap {
+// PersistentDict: Main container class exposing the public API
+class PersistentDict {
 private:
     NodeBase* root_;
     size_t count_;
@@ -300,31 +300,31 @@ public:
     static py::object NOT_FOUND;
 
     // Constructors
-    PersistentMap() : root_(nullptr), count_(0) {}
+    PersistentDict() : root_(nullptr), count_(0) {}
 
-    PersistentMap(NodeBase* root, size_t count) : root_(root), count_(count) {
+    PersistentDict(NodeBase* root, size_t count) : root_(root), count_(count) {
         if (root_) root_->addRef();
     }
 
     // Copy constructor
-    PersistentMap(const PersistentMap& other) : root_(other.root_), count_(other.count_) {
+    PersistentDict(const PersistentDict& other) : root_(other.root_), count_(other.count_) {
         if (root_) root_->addRef();
     }
 
     // Move constructor
-    PersistentMap(PersistentMap&& other) noexcept
+    PersistentDict(PersistentDict&& other) noexcept
         : root_(other.root_), count_(other.count_) {
         other.root_ = nullptr;
         other.count_ = 0;
     }
 
     // Destructor
-    ~PersistentMap() {
+    ~PersistentDict() {
         if (root_) root_->release();
     }
 
     // Copy assignment
-    PersistentMap& operator=(const PersistentMap& other) {
+    PersistentDict& operator=(const PersistentDict& other) {
         if (this != &other) {
             if (other.root_) other.root_->addRef();
             if (root_) root_->release();
@@ -335,7 +335,7 @@ public:
     }
 
     // Move assignment
-    PersistentMap& operator=(PersistentMap&& other) noexcept {
+    PersistentDict& operator=(PersistentDict&& other) noexcept {
         if (this != &other) {
             if (root_) root_->release();
             root_ = other.root_;
@@ -347,18 +347,18 @@ public:
     }
 
     // Core operations (functional style)
-    PersistentMap assoc(const py::object& key, const py::object& val) const;
-    PersistentMap dissoc(const py::object& key) const;
+    PersistentDict assoc(const py::object& key, const py::object& val) const;
+    PersistentDict dissoc(const py::object& key) const;
     py::object get(const py::object& key, const py::object& default_val = py::none()) const;
     bool contains(const py::object& key) const;
 
     // Python-friendly aliases
-    PersistentMap set(const py::object& key, const py::object& val) const { return assoc(key, val); }
-    PersistentMap delete_(const py::object& key) const { return dissoc(key); }
-    PersistentMap update(const py::object& other) const;
-    PersistentMap merge(const py::object& other) const { return update(other); }
-    PersistentMap clear() const { return PersistentMap(); }
-    PersistentMap copy() const { return *this; }  // Immutable, so copy = self
+    PersistentDict set(const py::object& key, const py::object& val) const { return assoc(key, val); }
+    PersistentDict delete_(const py::object& key) const { return dissoc(key); }
+    PersistentDict update(const py::object& other) const;
+    PersistentDict merge(const py::object& other) const { return update(other); }
+    PersistentDict clear() const { return PersistentDict(); }
+    PersistentDict copy() const { return *this; }  // Immutable, so copy = self
 
     // Size
     size_t size() const { return count_; }
@@ -375,13 +375,13 @@ public:
     py::list valuesList() const;
 
     // Equality
-    bool operator==(const PersistentMap& other) const;
-    bool operator!=(const PersistentMap& other) const { return !(*this == other); }
+    bool operator==(const PersistentDict& other) const;
+    bool operator!=(const PersistentDict& other) const { return !(*this == other); }
 
     // String representation
     std::string repr() const;
 
     // Factory methods
-    static PersistentMap fromDict(const py::dict& d);
-    static PersistentMap create(const py::kwargs& kw);
+    static PersistentDict fromDict(const py::dict& d);
+    static PersistentDict create(const py::kwargs& kw);
 };

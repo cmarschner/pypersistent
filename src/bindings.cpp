@@ -13,7 +13,7 @@ PYBIND11_MODULE(pypersistent, m) {
     m.doc() = "High-performance persistent hash map (HAMT) implementation in C++";
 
     // Initialize the NOT_FOUND sentinels
-    PersistentMap::NOT_FOUND = py::object();
+    PersistentDict::NOT_FOUND = py::object();
     PersistentArrayMap::NOT_FOUND = py::object();
 
     // Expose iterators as Python iterators
@@ -29,29 +29,29 @@ PYBIND11_MODULE(pypersistent, m) {
         .def("__iter__", [](ItemIterator &it) -> ItemIterator& { return it; })
         .def("__next__", &ItemIterator::next);
 
-    py::class_<PersistentMap>(m, "PersistentMap")
+    py::class_<PersistentDict>(m, "PersistentDict")
         .def(py::init<>(),
-             "Create an empty PersistentMap")
+             "Create an empty PersistentDict")
 
         // Core methods
-        .def("assoc", &PersistentMap::assoc,
+        .def("assoc", &PersistentDict::assoc,
              py::arg("key"), py::arg("val"),
              "Associate key with value, returning new map.\n\n"
              "Args:\n"
              "    key: The key (must be hashable)\n"
              "    val: The value\n\n"
              "Returns:\n"
-             "    A new PersistentMap with the association added")
+             "    A new PersistentDict with the association added")
 
-        .def("dissoc", &PersistentMap::dissoc,
+        .def("dissoc", &PersistentDict::dissoc,
              py::arg("key"),
              "Remove key, returning new map.\n\n"
              "Args:\n"
              "    key: The key to remove\n\n"
              "Returns:\n"
-             "    A new PersistentMap with the key removed")
+             "    A new PersistentDict with the key removed")
 
-        .def("get", &PersistentMap::get,
+        .def("get", &PersistentDict::get,
              py::arg("key"), py::arg("default") = py::none(),
              "Get value for key, or default if not found.\n\n"
              "Args:\n"
@@ -61,54 +61,54 @@ PYBIND11_MODULE(pypersistent, m) {
              "    The value associated with key, or default")
 
         // Python-friendly aliases
-        .def("set", &PersistentMap::set,
+        .def("set", &PersistentDict::set,
              py::arg("key"), py::arg("val"),
              "Pythonic alias for assoc(). Set key to value.\n\n"
              "Args:\n"
              "    key: The key\n"
              "    val: The value\n\n"
              "Returns:\n"
-             "    A new PersistentMap with the key set")
+             "    A new PersistentDict with the key set")
 
-        .def("delete", &PersistentMap::delete_,
+        .def("delete", &PersistentDict::delete_,
              py::arg("key"),
              "Pythonic alias for dissoc(). Delete key.\n\n"
              "Args:\n"
              "    key: The key to remove\n\n"
              "Returns:\n"
-             "    A new PersistentMap without the key")
+             "    A new PersistentDict without the key")
 
-        .def("update", &PersistentMap::update,
+        .def("update", &PersistentDict::update,
              py::arg("other"),
              "Merge another mapping, returning new map.\n\n"
              "Args:\n"
-             "    other: A dict, PersistentMap, or mapping\n\n"
+             "    other: A dict, PersistentDict, or mapping\n\n"
              "Returns:\n"
-             "    A new PersistentMap with merged entries")
+             "    A new PersistentDict with merged entries")
 
-        .def("merge", &PersistentMap::merge,
+        .def("merge", &PersistentDict::merge,
              py::arg("other"),
              "Alias for update(). Merge mappings.\n\n"
              "Args:\n"
-             "    other: A dict, PersistentMap, or mapping\n\n"
+             "    other: A dict, PersistentDict, or mapping\n\n"
              "Returns:\n"
-             "    A new PersistentMap with merged entries")
+             "    A new PersistentDict with merged entries")
 
-        .def("clear", &PersistentMap::clear,
-             "Return an empty PersistentMap.\n\n"
+        .def("clear", &PersistentDict::clear,
+             "Return an empty PersistentDict.\n\n"
              "Returns:\n"
-             "    An empty PersistentMap")
+             "    An empty PersistentDict")
 
-        .def("copy", &PersistentMap::copy,
+        .def("copy", &PersistentDict::copy,
              "Return self (no-op for immutable).\n\n"
              "Returns:\n"
              "    Self")
 
         // Python protocols
         .def("__getitem__",
-             [](const PersistentMap& m, py::object key) -> py::object {
-                 py::object result = m.get(key, PersistentMap::NOT_FOUND);
-                 if (result.is(PersistentMap::NOT_FOUND)) {
+             [](const PersistentDict& m, py::object key) -> py::object {
+                 py::object result = m.get(key, PersistentDict::NOT_FOUND);
+                 if (result.is(PersistentDict::NOT_FOUND)) {
                      throw py::key_error(py::str(key));
                  }
                  return result;
@@ -116,7 +116,7 @@ PYBIND11_MODULE(pypersistent, m) {
              py::arg("key"),
              "Get item using bracket notation. Raises KeyError if not found.")
 
-        .def("__contains__", &PersistentMap::contains,
+        .def("__contains__", &PersistentDict::contains,
              py::arg("key"),
              "Check if key is in map.\n\n"
              "Args:\n"
@@ -124,29 +124,29 @@ PYBIND11_MODULE(pypersistent, m) {
              "Returns:\n"
              "    True if key is present, False otherwise")
 
-        .def("__len__", &PersistentMap::size,
+        .def("__len__", &PersistentDict::size,
              "Return number of entries in the map.")
 
-        .def("__iter__", &PersistentMap::keys,
+        .def("__iter__", &PersistentDict::keys,
              "Iterate over keys in the map.")
 
-        .def("keys", &PersistentMap::keys,
+        .def("keys", &PersistentDict::keys,
              "Return iterator over keys.\n\n"
              "Returns:\n"
              "    Iterator over all keys in the map")
 
-        .def("values", &PersistentMap::values,
+        .def("values", &PersistentDict::values,
              "Return iterator over values.\n\n"
              "Returns:\n"
              "    Iterator over all values in the map")
 
-        .def("items", &PersistentMap::items,
+        .def("items", &PersistentDict::items,
              "Return iterator over (key, value) pairs.\n\n"
              "Returns:\n"
              "    Iterator over all (key, value) tuples in the map")
 
         // Fast materialized iteration (returns lists instead of iterators)
-        .def("items_list", &PersistentMap::itemsList,
+        .def("items_list", &PersistentDict::itemsList,
              "Return list of (key, value) tuples (3-4x faster than items() for full iteration).\n\n"
              "This method materializes all items into a list at once, which is much faster\n"
              "than using the iterator for complete iteration (single boundary crossing).\n\n"
@@ -158,22 +158,22 @@ PYBIND11_MODULE(pypersistent, m) {
              "    - Use this when you need all items at once\n"
              "    - Use items() iterator when you want lazy evaluation")
 
-        .def("keys_list", &PersistentMap::keysList,
+        .def("keys_list", &PersistentDict::keysList,
              "Return list of all keys (3-4x faster than keys() for full iteration).\n\n"
              "Returns:\n"
              "    List of all keys in the map")
 
-        .def("values_list", &PersistentMap::valuesList,
+        .def("values_list", &PersistentDict::valuesList,
              "Return list of all values (3-4x faster than values() for full iteration).\n\n"
              "Returns:\n"
              "    List of all values in the map")
 
         .def("__eq__",
-             [](const PersistentMap& self, py::object other) -> bool {
-                 if (!py::isinstance<PersistentMap>(other)) {
+             [](const PersistentDict& self, py::object other) -> bool {
+                 if (!py::isinstance<PersistentDict>(other)) {
                      return false;
                  }
-                 return self == other.cast<const PersistentMap&>();
+                 return self == other.cast<const PersistentDict&>();
              },
              py::arg("other"),
              "Check equality with another map.\n\n"
@@ -183,48 +183,48 @@ PYBIND11_MODULE(pypersistent, m) {
              "    True if maps are equal, False otherwise")
 
         .def("__ne__",
-             [](const PersistentMap& self, py::object other) -> bool {
-                 if (!py::isinstance<PersistentMap>(other)) {
+             [](const PersistentDict& self, py::object other) -> bool {
+                 if (!py::isinstance<PersistentDict>(other)) {
                      return true;
                  }
-                 return self != other.cast<const PersistentMap&>();
+                 return self != other.cast<const PersistentDict&>();
              },
              py::arg("other"),
              "Check inequality with another map.")
 
         .def("__or__",
-             [](const PersistentMap& self, py::object other) -> PersistentMap {
+             [](const PersistentDict& self, py::object other) -> PersistentDict {
                  return self.update(other);
              },
              py::arg("other"),
              "Merge with another mapping using | operator.\n\n"
              "Args:\n"
-             "    other: A dict, PersistentMap, or mapping\n\n"
+             "    other: A dict, PersistentDict, or mapping\n\n"
              "Returns:\n"
-             "    A new PersistentMap with merged entries\n\n"
+             "    A new PersistentDict with merged entries\n\n"
              "Example:\n"
-             "    m1 = PersistentMap.create(a=1, b=2)\n"
-             "    m2 = PersistentMap.create(c=3)\n"
+             "    m1 = PersistentDict.create(a=1, b=2)\n"
+             "    m2 = PersistentDict.create(c=3)\n"
              "    m3 = m1 | m2  # {'a': 1, 'b': 2, 'c': 3}")
 
-        .def("__repr__", &PersistentMap::repr,
+        .def("__repr__", &PersistentDict::repr,
              "String representation of the map.")
 
         // Factory methods
-        .def_static("from_dict", &PersistentMap::fromDict,
+        .def_static("from_dict", &PersistentDict::fromDict,
                    py::arg("dict"),
-                   "Create PersistentMap from dictionary.\n\n"
+                   "Create PersistentDict from dictionary.\n\n"
                    "Args:\n"
                    "    dict: A Python dictionary\n\n"
                    "Returns:\n"
-                   "    A new PersistentMap containing all key-value pairs from dict")
+                   "    A new PersistentDict containing all key-value pairs from dict")
 
-        .def_static("create", &PersistentMap::create,
-                   "Create PersistentMap from keyword arguments.\n\n"
+        .def_static("create", &PersistentDict::create,
+                   "Create PersistentDict from keyword arguments.\n\n"
                    "Example:\n"
-                   "    m = PersistentMap.create(a=1, b=2, c=3)\n\n"
+                   "    m = PersistentDict.create(a=1, b=2, c=3)\n\n"
                    "Returns:\n"
-                   "    A new PersistentMap containing the keyword arguments");
+                   "    A new PersistentDict containing the keyword arguments");
 
     // PersistentArrayMap iterators
     py::class_<ArrayMapKeyIterator>(m, "ArrayMapKeyIterator")
@@ -302,7 +302,7 @@ PYBIND11_MODULE(pypersistent, m) {
              py::arg("other"),
              "Merge another mapping, returning new map.\n\n"
              "Args:\n"
-             "    other: A dict, PersistentArrayMap, PersistentMap, or mapping\n\n"
+             "    other: A dict, PersistentArrayMap, PersistentDict, or mapping\n\n"
              "Returns:\n"
              "    A new PersistentArrayMap with merged entries")
 
@@ -310,7 +310,7 @@ PYBIND11_MODULE(pypersistent, m) {
              py::arg("other"),
              "Alias for update(). Merge mappings.\n\n"
              "Args:\n"
-             "    other: A dict, PersistentArrayMap, PersistentMap, or mapping\n\n"
+             "    other: A dict, PersistentArrayMap, PersistentDict, or mapping\n\n"
              "Returns:\n"
              "    A new PersistentArrayMap with merged entries")
 
@@ -443,34 +443,34 @@ PYBIND11_MODULE(pypersistent, m) {
                    "Raises:\n"
                    "    RuntimeError: If more than 8 keyword arguments provided");
 
-    // PersistentHashSet iterator
+    // PersistentSet iterator
     py::class_<SetIterator>(m, "SetIterator")
         .def("__iter__", [](SetIterator &it) -> SetIterator& { return it; })
         .def("__next__", &SetIterator::next);
 
-    // PersistentHashSet
-    py::class_<PersistentHashSet>(m, "PersistentHashSet")
+    // PersistentSet
+    py::class_<PersistentSet>(m, "PersistentSet")
         .def(py::init<>(),
-             "Create an empty PersistentHashSet")
+             "Create an empty PersistentSet")
 
         // Core methods
-        .def("conj", &PersistentHashSet::conj,
+        .def("conj", &PersistentSet::conj,
              py::arg("elem"),
              "Add element to set, returning new set.\n\n"
              "Args:\n"
              "    elem: The element to add (must be hashable)\n\n"
              "Returns:\n"
-             "    A new PersistentHashSet with the element added")
+             "    A new PersistentSet with the element added")
 
-        .def("disj", &PersistentHashSet::disj,
+        .def("disj", &PersistentSet::disj,
              py::arg("elem"),
              "Remove element from set, returning new set.\n\n"
              "Args:\n"
              "    elem: The element to remove\n\n"
              "Returns:\n"
-             "    A new PersistentHashSet with the element removed")
+             "    A new PersistentSet with the element removed")
 
-        .def("contains", &PersistentHashSet::contains,
+        .def("contains", &PersistentSet::contains,
              py::arg("elem"),
              "Check if element is in set.\n\n"
              "Args:\n"
@@ -479,100 +479,100 @@ PYBIND11_MODULE(pypersistent, m) {
              "    True if element is present, False otherwise")
 
         // Set operations
-        .def("union", &PersistentHashSet::union_,
+        .def("union", &PersistentSet::union_,
              py::arg("other"),
              "Return union of this set and other.\n\n"
              "Args:\n"
-             "    other: Another PersistentHashSet\n\n"
+             "    other: Another PersistentSet\n\n"
              "Returns:\n"
-             "    A new PersistentHashSet with all elements from both sets")
+             "    A new PersistentSet with all elements from both sets")
 
-        .def("intersection", &PersistentHashSet::intersection,
+        .def("intersection", &PersistentSet::intersection,
              py::arg("other"),
              "Return intersection of this set and other.\n\n"
              "Args:\n"
-             "    other: Another PersistentHashSet\n\n"
+             "    other: Another PersistentSet\n\n"
              "Returns:\n"
-             "    A new PersistentHashSet with only elements in both sets")
+             "    A new PersistentSet with only elements in both sets")
 
-        .def("difference", &PersistentHashSet::difference,
+        .def("difference", &PersistentSet::difference,
              py::arg("other"),
              "Return difference of this set and other.\n\n"
              "Args:\n"
-             "    other: Another PersistentHashSet\n\n"
+             "    other: Another PersistentSet\n\n"
              "Returns:\n"
-             "    A new PersistentHashSet with elements in this set but not in other")
+             "    A new PersistentSet with elements in this set but not in other")
 
-        .def("symmetric_difference", &PersistentHashSet::symmetric_difference,
+        .def("symmetric_difference", &PersistentSet::symmetric_difference,
              py::arg("other"),
              "Return symmetric difference of this set and other.\n\n"
              "Args:\n"
-             "    other: Another PersistentHashSet\n\n"
+             "    other: Another PersistentSet\n\n"
              "Returns:\n"
-             "    A new PersistentHashSet with elements in either set but not both")
+             "    A new PersistentSet with elements in either set but not both")
 
         // Set predicates
-        .def("issubset", &PersistentHashSet::issubset,
+        .def("issubset", &PersistentSet::issubset,
              py::arg("other"),
              "Test if this set is a subset of other.\n\n"
              "Args:\n"
-             "    other: Another PersistentHashSet\n\n"
+             "    other: Another PersistentSet\n\n"
              "Returns:\n"
              "    True if all elements of this set are in other")
 
-        .def("issuperset", &PersistentHashSet::issuperset,
+        .def("issuperset", &PersistentSet::issuperset,
              py::arg("other"),
              "Test if this set is a superset of other.\n\n"
              "Args:\n"
-             "    other: Another PersistentHashSet\n\n"
+             "    other: Another PersistentSet\n\n"
              "Returns:\n"
              "    True if all elements of other are in this set")
 
-        .def("isdisjoint", &PersistentHashSet::isdisjoint,
+        .def("isdisjoint", &PersistentSet::isdisjoint,
              py::arg("other"),
              "Test if this set has no elements in common with other.\n\n"
              "Args:\n"
-             "    other: Another PersistentHashSet\n\n"
+             "    other: Another PersistentSet\n\n"
              "Returns:\n"
              "    True if sets have no common elements")
 
         // Python-friendly aliases
-        .def("add", &PersistentHashSet::add,
+        .def("add", &PersistentSet::add,
              py::arg("elem"),
              "Pythonic alias for conj(). Add element to set.\n\n"
              "Args:\n"
              "    elem: The element to add\n\n"
              "Returns:\n"
-             "    A new PersistentHashSet with the element added")
+             "    A new PersistentSet with the element added")
 
-        .def("remove", &PersistentHashSet::remove,
+        .def("remove", &PersistentSet::remove,
              py::arg("elem"),
              "Pythonic alias for disj(). Remove element from set.\n\n"
              "Args:\n"
              "    elem: The element to remove\n\n"
              "Returns:\n"
-             "    A new PersistentHashSet with the element removed")
+             "    A new PersistentSet with the element removed")
 
-        .def("update", &PersistentHashSet::update,
+        .def("update", &PersistentSet::update,
              py::arg("other"),
              "Add all elements from another iterable.\n\n"
              "Args:\n"
-             "    other: A set, PersistentHashSet, list, or iterable\n\n"
+             "    other: A set, PersistentSet, list, or iterable\n\n"
              "Returns:\n"
-             "    A new PersistentHashSet with all elements added")
+             "    A new PersistentSet with all elements added")
 
-        .def("clear", &PersistentHashSet::clear,
-             "Return an empty PersistentHashSet.\n\n"
+        .def("clear", &PersistentSet::clear,
+             "Return an empty PersistentSet.\n\n"
              "Returns:\n"
-             "    An empty PersistentHashSet")
+             "    An empty PersistentSet")
 
-        .def("copy", &PersistentHashSet::copy,
+        .def("copy", &PersistentSet::copy,
              "Return self (no-op for immutable).\n\n"
              "Returns:\n"
              "    Self")
 
         // Python protocols
-        .def("__contains__", &PersistentHashSet::contains,
+        .def("__contains__", &PersistentSet::contains,
              py::arg("elem"),
              "Check if element is in set.\n\n"
              "Args:\n"
@@ -580,78 +580,78 @@ PYBIND11_MODULE(pypersistent, m) {
              "Returns:\n"
              "    True if element is present, False otherwise")
 
-        .def("__len__", &PersistentHashSet::size,
+        .def("__len__", &PersistentSet::size,
              "Return number of elements in the set.")
 
-        .def("__iter__", &PersistentHashSet::iter,
+        .def("__iter__", &PersistentSet::iter,
              "Iterate over elements in the set.")
 
-        .def("list", &PersistentHashSet::list,
+        .def("list", &PersistentSet::list,
              "Return list of all elements.\n\n"
              "Returns:\n"
              "    List of all elements in the set")
 
         // Set operators
-        .def("__or__", &PersistentHashSet::union_,
+        .def("__or__", &PersistentSet::union_,
              py::arg("other"),
              "Union using | operator.\n\n"
              "Args:\n"
-             "    other: Another PersistentHashSet\n\n"
+             "    other: Another PersistentSet\n\n"
              "Returns:\n"
-             "    A new PersistentHashSet with all elements from both sets")
+             "    A new PersistentSet with all elements from both sets")
 
-        .def("__and__", &PersistentHashSet::intersection,
+        .def("__and__", &PersistentSet::intersection,
              py::arg("other"),
              "Intersection using & operator.\n\n"
              "Args:\n"
-             "    other: Another PersistentHashSet\n\n"
+             "    other: Another PersistentSet\n\n"
              "Returns:\n"
-             "    A new PersistentHashSet with only elements in both sets")
+             "    A new PersistentSet with only elements in both sets")
 
-        .def("__sub__", &PersistentHashSet::difference,
+        .def("__sub__", &PersistentSet::difference,
              py::arg("other"),
              "Difference using - operator.\n\n"
              "Args:\n"
-             "    other: Another PersistentHashSet\n\n"
+             "    other: Another PersistentSet\n\n"
              "Returns:\n"
-             "    A new PersistentHashSet with elements in this set but not in other")
+             "    A new PersistentSet with elements in this set but not in other")
 
-        .def("__xor__", &PersistentHashSet::symmetric_difference,
+        .def("__xor__", &PersistentSet::symmetric_difference,
              py::arg("other"),
              "Symmetric difference using ^ operator.\n\n"
              "Args:\n"
-             "    other: Another PersistentHashSet\n\n"
+             "    other: Another PersistentSet\n\n"
              "Returns:\n"
-             "    A new PersistentHashSet with elements in either set but not both")
+             "    A new PersistentSet with elements in either set but not both")
 
-        .def("__le__", &PersistentHashSet::issubset,
+        .def("__le__", &PersistentSet::issubset,
              py::arg("other"),
              "Subset test using <= operator.")
 
-        .def("__ge__", &PersistentHashSet::issuperset,
+        .def("__ge__", &PersistentSet::issuperset,
              py::arg("other"),
              "Superset test using >= operator.")
 
         .def("__lt__",
-             [](const PersistentHashSet& self, const PersistentHashSet& other) -> bool {
+             [](const PersistentSet& self, const PersistentSet& other) -> bool {
                  return self.issubset(other) && self != other;
              },
              py::arg("other"),
              "Proper subset test using < operator.")
 
         .def("__gt__",
-             [](const PersistentHashSet& self, const PersistentHashSet& other) -> bool {
+             [](const PersistentSet& self, const PersistentSet& other) -> bool {
                  return self.issuperset(other) && self != other;
              },
              py::arg("other"),
              "Proper superset test using > operator.")
 
         .def("__eq__",
-             [](const PersistentHashSet& self, py::object other) -> bool {
-                 if (!py::isinstance<PersistentHashSet>(other)) {
+             [](const PersistentSet& self, py::object other) -> bool {
+                 if (!py::isinstance<PersistentSet>(other)) {
                      return false;
                  }
-                 return self == other.cast<const PersistentHashSet&>();
+                 return self == other.cast<const PersistentSet&>();
              },
              py::arg("other"),
              "Check equality with another set.\n\n"
@@ -661,83 +661,83 @@ PYBIND11_MODULE(pypersistent, m) {
              "    True if sets are equal, False otherwise")
 
         .def("__ne__",
-             [](const PersistentHashSet& self, py::object other) -> bool {
-                 if (!py::isinstance<PersistentHashSet>(other)) {
+             [](const PersistentSet& self, py::object other) -> bool {
+                 if (!py::isinstance<PersistentSet>(other)) {
                      return true;
                  }
-                 return self != other.cast<const PersistentHashSet&>();
+                 return self != other.cast<const PersistentSet&>();
              },
              py::arg("other"),
              "Check inequality with another set.")
 
-        .def("__repr__", &PersistentHashSet::repr,
+        .def("__repr__", &PersistentSet::repr,
              "String representation of the set.")
 
         // Factory methods
-        .def_static("from_set", &PersistentHashSet::fromSet,
+        .def_static("from_set", &PersistentSet::fromSet,
                    py::arg("set"),
-                   "Create PersistentHashSet from Python set.\n\n"
+                   "Create PersistentSet from Python set.\n\n"
                    "Args:\n"
                    "    set: A Python set\n\n"
                    "Returns:\n"
-                   "    A new PersistentHashSet containing all elements from set")
+                   "    A new PersistentSet containing all elements from set")
 
-        .def_static("from_list", &PersistentHashSet::fromList,
+        .def_static("from_list", &PersistentSet::fromList,
                    py::arg("list"),
-                   "Create PersistentHashSet from list (duplicates removed).\n\n"
+                   "Create PersistentSet from list (duplicates removed).\n\n"
                    "Args:\n"
                    "    list: A Python list\n\n"
                    "Returns:\n"
-                   "    A new PersistentHashSet containing unique elements from list")
+                   "    A new PersistentSet containing unique elements from list")
 
-        .def_static("from_iterable", &PersistentHashSet::fromIterable,
+        .def_static("from_iterable", &PersistentSet::fromIterable,
                    py::arg("iterable"),
-                   "Create PersistentHashSet from any iterable.\n\n"
+                   "Create PersistentSet from any iterable.\n\n"
                    "Args:\n"
                    "    iterable: Any Python iterable\n\n"
                    "Returns:\n"
-                   "    A new PersistentHashSet containing unique elements from iterable")
+                   "    A new PersistentSet containing unique elements from iterable")
 
-        .def_static("create", &PersistentHashSet::create,
-                   "Create PersistentHashSet from arguments.\n\n"
+        .def_static("create", &PersistentSet::create,
+                   "Create PersistentSet from arguments.\n\n"
                    "Example:\n"
-                   "    s = PersistentHashSet.create(1, 2, 3)\n\n"
+                   "    s = PersistentSet.create(1, 2, 3)\n\n"
                    "Returns:\n"
-                   "    A new PersistentHashSet containing the arguments");
+                   "    A new PersistentSet containing the arguments");
 
-    // PersistentVector iterator
+    // PersistentList iterator
     py::class_<VectorIterator>(m, "VectorIterator")
         .def("__iter__", [](VectorIterator &it) -> VectorIterator& { return it; })
         .def("__next__", &VectorIterator::next);
 
-    // PersistentVector
-    py::class_<PersistentVector>(m, "PersistentVector")
+    // PersistentList
+    py::class_<PersistentList>(m, "PersistentList")
         .def(py::init<>(),
-             "Create an empty PersistentVector")
+             "Create an empty PersistentList")
 
         // Core methods
-        .def("conj", &PersistentVector::conj,
+        .def("conj", &PersistentList::conj,
              py::arg("val"),
              "Append value to end of vector, returning new vector.\n\n"
              "Args:\n"
              "    val: The value to append\n\n"
              "Returns:\n"
-             "    A new PersistentVector with the value appended\n\n"
+             "    A new PersistentList with the value appended\n\n"
              "Complexity: O(1) amortized")
 
-        .def("assoc", &PersistentVector::assoc,
+        .def("assoc", &PersistentList::assoc,
              py::arg("idx"), py::arg("val"),
              "Update value at index, returning new vector.\n\n"
              "Args:\n"
              "    idx: The index to update\n"
              "    val: The new value\n\n"
              "Returns:\n"
-             "    A new PersistentVector with the value updated\n\n"
+             "    A new PersistentList with the value updated\n\n"
              "Complexity: O(log32 n)\n"
              "Raises:\n"
              "    IndexError: If index is out of range")
 
-        .def("nth", &PersistentVector::nth,
+        .def("nth", &PersistentList::nth,
              py::arg("idx"),
              "Get value at index.\n\n"
              "Args:\n"
@@ -748,7 +748,7 @@ PYBIND11_MODULE(pypersistent, m) {
              "Raises:\n"
              "    IndexError: If index is out of range")
 
-        .def("get", &PersistentVector::get,
+        .def("get", &PersistentList::get,
              py::arg("idx"), py::arg("default") = py::none(),
              "Get value at index, or default if out of range.\n\n"
              "Args:\n"
@@ -757,34 +757,34 @@ PYBIND11_MODULE(pypersistent, m) {
              "Returns:\n"
              "    The value at the index, or default")
 
-        .def("pop", &PersistentVector::pop,
+        .def("pop", &PersistentList::pop,
              "Remove last element, returning new vector.\n\n"
              "Returns:\n"
-             "    A new PersistentVector with the last element removed\n\n"
+             "    A new PersistentList with the last element removed\n\n"
              "Raises:\n"
              "    RuntimeError: If vector is empty")
 
         // Python-friendly aliases
-        .def("append", &PersistentVector::append,
+        .def("append", &PersistentList::append,
              py::arg("val"),
              "Pythonic alias for conj(). Append value to end.\n\n"
              "Args:\n"
              "    val: The value to append\n\n"
              "Returns:\n"
-             "    A new PersistentVector with the value appended")
+             "    A new PersistentList with the value appended")
 
-        .def("set", &PersistentVector::set,
+        .def("set", &PersistentList::set,
              py::arg("idx"), py::arg("val"),
              "Pythonic alias for assoc(). Set value at index.\n\n"
              "Args:\n"
              "    idx: The index to update\n"
              "    val: The new value\n\n"
              "Returns:\n"
-             "    A new PersistentVector with the value updated")
+             "    A new PersistentList with the value updated")
 
         // Python protocols
         .def("__getitem__",
-             [](const PersistentVector& v, py::object key) -> py::object {
+             [](const PersistentList& v, py::object key) -> py::object {
                  // Handle slice
                  if (py::isinstance<py::slice>(key)) {
                      py::slice slice = key.cast<py::slice>();
@@ -793,7 +793,7 @@ PYBIND11_MODULE(pypersistent, m) {
                          throw py::error_already_set();
                      }
                      if (step != 1) {
-                         throw std::invalid_argument("PersistentVector slicing does not support step != 1");
+                         throw std::invalid_argument("PersistentList slicing does not support step != 1");
                      }
                      return py::cast(v.slice(start, stop));
                  }
@@ -806,12 +806,12 @@ PYBIND11_MODULE(pypersistent, m) {
                          idx += v.size();
                      }
                      if (idx < 0 || idx >= static_cast<Py_ssize_t>(v.size())) {
-                         throw py::index_error("PersistentVector index out of range");
+                         throw py::index_error("PersistentList index out of range");
                      }
                      return v.nth(idx);
                  }
 
-                 throw py::type_error("PersistentVector indices must be integers or slices, not " +
+                 throw py::type_error("PersistentList indices must be integers or slices, not " +
                                      std::string(py::str(key.get_type())));
              },
              py::arg("key"),
@@ -821,14 +821,14 @@ PYBIND11_MODULE(pypersistent, m) {
              "    v[-1]     # Last element\n"
              "    v[1:4]    # Slice from index 1 to 3")
 
-        .def("__len__", &PersistentVector::size,
+        .def("__len__", &PersistentList::size,
              "Return number of elements in the vector.")
 
-        .def("__iter__", &PersistentVector::iter,
+        .def("__iter__", &PersistentList::iter,
              "Iterate over elements in the vector.")
 
         .def("__contains__",
-             [](const PersistentVector& v, py::object val) -> bool {
+             [](const PersistentList& v, py::object val) -> bool {
                  for (size_t i = 0; i < v.size(); ++i) {
                      py::object elem = v.nth(i);
                      int eq = PyObject_RichCompareBool(elem.ptr(), val.ptr(), Py_EQ);
@@ -843,26 +843,26 @@ PYBIND11_MODULE(pypersistent, m) {
              "Returns:\n"
              "    True if value is present, False otherwise")
 
-        .def("list", &PersistentVector::list,
+        .def("list", &PersistentList::list,
              "Convert to Python list.\n\n"
              "Returns:\n"
              "    Python list containing all elements")
 
-        .def("slice", &PersistentVector::slice,
+        .def("slice", &PersistentList::slice,
              py::arg("start"), py::arg("stop"),
              "Return slice of vector.\n\n"
              "Args:\n"
              "    start: Start index (inclusive)\n"
              "    stop: Stop index (exclusive)\n\n"
              "Returns:\n"
-             "    A new PersistentVector containing the slice")
+             "    A new PersistentList containing the slice")
 
         .def("__eq__",
-             [](const PersistentVector& self, py::object other) -> bool {
-                 if (!py::isinstance<PersistentVector>(other)) {
+             [](const PersistentList& self, py::object other) -> bool {
+                 if (!py::isinstance<PersistentList>(other)) {
                      return false;
                  }
-                 return self == other.cast<const PersistentVector&>();
+                 return self == other.cast<const PersistentList&>();
              },
              py::arg("other"),
              "Check equality with another vector.\n\n"
@@ -872,73 +872,73 @@ PYBIND11_MODULE(pypersistent, m) {
              "    True if vectors are equal, False otherwise")
 
         .def("__ne__",
-             [](const PersistentVector& self, py::object other) -> bool {
-                 if (!py::isinstance<PersistentVector>(other)) {
+             [](const PersistentList& self, py::object other) -> bool {
+                 if (!py::isinstance<PersistentList>(other)) {
                      return true;
                  }
-                 return self != other.cast<const PersistentVector&>();
+                 return self != other.cast<const PersistentList&>();
              },
              py::arg("other"),
              "Check inequality with another vector.")
 
-        .def("__repr__", &PersistentVector::repr,
+        .def("__repr__", &PersistentList::repr,
              "String representation of the vector.")
 
         // Factory methods
-        .def_static("from_list", &PersistentVector::fromList,
+        .def_static("from_list", &PersistentList::fromList,
                    py::arg("list"),
-                   "Create PersistentVector from Python list.\n\n"
+                   "Create PersistentList from Python list.\n\n"
                    "Args:\n"
                    "    list: A Python list\n\n"
                    "Returns:\n"
-                   "    A new PersistentVector containing all elements from list")
+                   "    A new PersistentList containing all elements from list")
 
-        .def_static("from_iterable", &PersistentVector::fromIterable,
+        .def_static("from_iterable", &PersistentList::fromIterable,
                    py::arg("iterable"),
-                   "Create PersistentVector from any iterable.\n\n"
+                   "Create PersistentList from any iterable.\n\n"
                    "Args:\n"
                    "    iterable: Any Python iterable\n\n"
                    "Returns:\n"
-                   "    A new PersistentVector containing all elements from iterable")
+                   "    A new PersistentList containing all elements from iterable")
 
-        .def_static("create", &PersistentVector::create,
-                   "Create PersistentVector from arguments.\n\n"
+        .def_static("create", &PersistentList::create,
+                   "Create PersistentList from arguments.\n\n"
                    "Example:\n"
-                   "    v = PersistentVector.create(1, 2, 3, 4, 5)\n\n"
+                   "    v = PersistentList.create(1, 2, 3, 4, 5)\n\n"
                    "Returns:\n"
-                   "    A new PersistentVector containing the arguments");
+                   "    A new PersistentList containing the arguments");
 
-    // PersistentTreeMap iterator
+    // PersistentSortedDict iterator
     py::class_<TreeMapIteratorWrapper>(m, "TreeMapIteratorWrapper")
         .def("__iter__", &TreeMapIteratorWrapper::iter)
         .def("__next__", &TreeMapIteratorWrapper::next);
 
-    // PersistentTreeMap
-    py::class_<PersistentTreeMap>(m, "PersistentTreeMap")
+    // PersistentSortedDict
+    py::class_<PersistentSortedDict>(m, "PersistentSortedDict")
         .def(py::init<>(),
-             "Create an empty PersistentTreeMap (sorted map)")
+             "Create an empty PersistentSortedDict (sorted map)")
 
         // Core methods
-        .def("assoc", &PersistentTreeMap::assoc,
+        .def("assoc", &PersistentSortedDict::assoc,
              py::arg("key"), py::arg("val"),
              "Associate key with value, returning new sorted map.\n\n"
              "Args:\n"
              "    key: The key (must support < comparison)\n"
              "    val: The value\n\n"
              "Returns:\n"
-             "    A new PersistentTreeMap with the association added\n\n"
+             "    A new PersistentSortedDict with the association added\n\n"
              "Complexity: O(log n)")
 
-        .def("dissoc", &PersistentTreeMap::dissoc,
+        .def("dissoc", &PersistentSortedDict::dissoc,
              py::arg("key"),
              "Remove key, returning new sorted map.\n\n"
              "Args:\n"
              "    key: The key to remove\n\n"
              "Returns:\n"
-             "    A new PersistentTreeMap with the key removed\n\n"
+             "    A new PersistentSortedDict with the key removed\n\n"
              "Complexity: O(log n)")
 
-        .def("get", py::overload_cast<const py::object&>(&PersistentTreeMap::get, py::const_),
+        .def("get", py::overload_cast<const py::object&>(&PersistentSortedDict::get, py::const_),
              py::arg("key"),
              "Get value for key.\n\n"
              "Args:\n"
@@ -949,7 +949,7 @@ PYBIND11_MODULE(pypersistent, m) {
              "    KeyError: If key not found\n\n"
              "Complexity: O(log n)")
 
-        .def("get", py::overload_cast<const py::object&, const py::object&>(&PersistentTreeMap::get, py::const_),
+        .def("get", py::overload_cast<const py::object&, const py::object&>(&PersistentSortedDict::get, py::const_),
              py::arg("key"), py::arg("default"),
              "Get value for key, or default if not found.\n\n"
              "Args:\n"
@@ -959,7 +959,7 @@ PYBIND11_MODULE(pypersistent, m) {
              "    The value associated with key, or default\n\n"
              "Complexity: O(log n)")
 
-        .def("contains", &PersistentTreeMap::contains,
+        .def("contains", &PersistentSortedDict::contains,
              py::arg("key"),
              "Check if key exists in the map.\n\n"
              "Args:\n"
@@ -969,7 +969,7 @@ PYBIND11_MODULE(pypersistent, m) {
              "Complexity: O(log n)")
 
         // Ordered operations
-        .def("first", &PersistentTreeMap::first,
+        .def("first", &PersistentSortedDict::first,
              "Get [key, value] of smallest key.\n\n"
              "Returns:\n"
              "    List [key, value] for the minimum key\n\n"
@@ -977,7 +977,7 @@ PYBIND11_MODULE(pypersistent, m) {
              "    RuntimeError: If map is empty\n\n"
              "Complexity: O(log n)")
 
-        .def("last", &PersistentTreeMap::last,
+        .def("last", &PersistentSortedDict::last,
              "Get [key, value] of largest key.\n\n"
              "Returns:\n"
              "    List [key, value] for the maximum key\n\n"
@@ -985,38 +985,38 @@ PYBIND11_MODULE(pypersistent, m) {
              "    RuntimeError: If map is empty\n\n"
              "Complexity: O(log n)")
 
-        .def("subseq", &PersistentTreeMap::subseq,
+        .def("subseq", &PersistentSortedDict::subseq,
              py::arg("start"), py::arg("end"),
              "Get subsequence of keys in range [start, end).\n\n"
              "Args:\n"
              "    start: Start key (inclusive)\n"
              "    end: End key (exclusive)\n\n"
              "Returns:\n"
-             "    A new PersistentTreeMap with keys in [start, end)\n\n"
+             "    A new PersistentSortedDict with keys in [start, end)\n\n"
              "Complexity: O(m + log n) where m is output size")
 
-        .def("rsubseq", &PersistentTreeMap::rsubseq,
+        .def("rsubseq", &PersistentSortedDict::rsubseq,
              py::arg("start"), py::arg("end"),
              "Get reversed subsequence of keys in range [start, end).\n\n"
              "Args:\n"
              "    start: Start key (inclusive)\n"
              "    end: End key (exclusive)\n\n"
              "Returns:\n"
-             "    A new PersistentTreeMap with keys in [start, end) in reverse order\n\n"
+             "    A new PersistentSortedDict with keys in [start, end) in reverse order\n\n"
              "Complexity: O(m + log n) where m is output size")
 
         // Python-friendly aliases
-        .def("set", &PersistentTreeMap::assoc,
+        .def("set", &PersistentSortedDict::assoc,
              py::arg("key"), py::arg("val"),
              "Pythonic alias for assoc(). Set key to value.\n\n"
              "Args:\n"
              "    key: The key\n"
              "    val: The value\n\n"
              "Returns:\n"
-             "    A new PersistentTreeMap with the key set")
+             "    A new PersistentSortedDict with the key set")
 
         // Python protocols
-        .def("__getitem__", &PersistentTreeMap::pyGetItem,
+        .def("__getitem__", &PersistentSortedDict::pyGetItem,
              py::arg("key"),
              "Get item using bracket notation. Raises KeyError if not found.\n\n"
              "Args:\n"
@@ -1026,7 +1026,7 @@ PYBIND11_MODULE(pypersistent, m) {
              "Raises:\n"
              "    KeyError: If key not found")
 
-        .def("__contains__", &PersistentTreeMap::pyContains,
+        .def("__contains__", &PersistentSortedDict::pyContains,
              py::arg("key"),
              "Check if key is in map.\n\n"
              "Args:\n"
@@ -1034,41 +1034,41 @@ PYBIND11_MODULE(pypersistent, m) {
              "Returns:\n"
              "    True if key is present, False otherwise")
 
-        .def("__len__", &PersistentTreeMap::size,
+        .def("__len__", &PersistentSortedDict::size,
              "Return number of entries in the map.")
 
         .def("__iter__",
-             [](const PersistentTreeMap& m) -> py::iterator {
+             [](const PersistentSortedDict& m) -> py::iterator {
                  return py::iter(m.keysList());
              },
              "Iterate over keys in sorted order.")
 
-        .def("keys_list", &PersistentTreeMap::keysList,
+        .def("keys_list", &PersistentSortedDict::keysList,
              "Return list of all keys in sorted order.\n\n"
              "Returns:\n"
              "    List of all keys in ascending order")
 
-        .def("values_list", &PersistentTreeMap::valuesList,
+        .def("values_list", &PersistentSortedDict::valuesList,
              "Return list of all values in key-sorted order.\n\n"
              "Returns:\n"
              "    List of all values ordered by their keys")
 
-        .def("items", &PersistentTreeMap::items,
+        .def("items", &PersistentSortedDict::items,
              "Return list of (key, value) pairs in sorted order.\n\n"
              "Returns:\n"
              "    List of all (key, value) tuples ordered by key")
 
-        .def("dict", &PersistentTreeMap::dict,
+        .def("dict", &PersistentSortedDict::dict,
              "Convert to Python dict.\n\n"
              "Returns:\n"
              "    Python dict containing all key-value pairs")
 
         .def("__eq__",
-             [](const PersistentTreeMap& self, py::object other) -> bool {
-                 if (!py::isinstance<PersistentTreeMap>(other)) {
+             [](const PersistentSortedDict& self, py::object other) -> bool {
+                 if (!py::isinstance<PersistentSortedDict>(other)) {
                      return false;
                  }
-                 return self == other.cast<const PersistentTreeMap&>();
+                 return self == other.cast<const PersistentSortedDict&>();
              },
              py::arg("other"),
              "Check equality with another map.\n\n"
@@ -1078,18 +1078,18 @@ PYBIND11_MODULE(pypersistent, m) {
              "    True if maps are equal, False otherwise")
 
         .def("__ne__",
-             [](const PersistentTreeMap& self, py::object other) -> bool {
-                 if (!py::isinstance<PersistentTreeMap>(other)) {
+             [](const PersistentSortedDict& self, py::object other) -> bool {
+                 if (!py::isinstance<PersistentSortedDict>(other)) {
                      return true;
                  }
-                 return self != other.cast<const PersistentTreeMap&>();
+                 return self != other.cast<const PersistentSortedDict&>();
              },
              py::arg("other"),
              "Check inequality with another map.")
 
         .def("__or__",
-             [](const PersistentTreeMap& self, py::object other) -> PersistentTreeMap {
-                 PersistentTreeMap result = self;
+             [](const PersistentSortedDict& self, py::object other) -> PersistentSortedDict {
+                 PersistentSortedDict result = self;
 
                  // Handle dict
                  if (py::isinstance<py::dict>(other)) {
@@ -1101,18 +1101,18 @@ PYBIND11_MODULE(pypersistent, m) {
                          );
                      }
                  }
-                 // Handle PersistentTreeMap
-                 else if (py::isinstance<PersistentTreeMap>(other)) {
-                     const PersistentTreeMap& other_map = other.cast<const PersistentTreeMap&>();
+                 // Handle PersistentSortedDict
+                 else if (py::isinstance<PersistentSortedDict>(other)) {
+                     const PersistentSortedDict& other_map = other.cast<const PersistentSortedDict&>();
                      py::list items = other_map.items();
                      for (auto item : items) {
                          py::list pair = item.cast<py::list>();
                          result = result.assoc(pair[0], pair[1]);
                      }
                  }
-                 // Handle PersistentMap
-                 else if (py::isinstance<PersistentMap>(other)) {
-                     const PersistentMap& other_map = other.cast<const PersistentMap&>();
+                 // Handle PersistentDict
+                 else if (py::isinstance<PersistentDict>(other)) {
+                     const PersistentDict& other_map = other.cast<const PersistentDict&>();
                      py::list items = other_map.itemsList();
                      for (auto item : items) {
                          py::tuple pair = item.cast<py::tuple>();
@@ -1138,7 +1138,7 @@ PYBIND11_MODULE(pypersistent, m) {
                      }
                  }
                  else {
-                     throw py::type_error("Cannot merge PersistentTreeMap with non-mapping type");
+                     throw py::type_error("Cannot merge PersistentSortedDict with non-mapping type");
                  }
 
                  return result;
@@ -1146,26 +1146,26 @@ PYBIND11_MODULE(pypersistent, m) {
              py::arg("other"),
              "Merge with another mapping using | operator.\n\n"
              "Args:\n"
-             "    other: A dict, PersistentTreeMap, PersistentMap, PersistentArrayMap, or any mapping\n\n"
+             "    other: A dict, PersistentSortedDict, PersistentDict, PersistentArrayMap, or any mapping\n\n"
              "Returns:\n"
-             "    A new PersistentTreeMap with merged entries (right side wins on conflicts)\n\n"
+             "    A new PersistentSortedDict with merged entries (right side wins on conflicts)\n\n"
              "Example:\n"
-             "    tm1 = PersistentTreeMap.create(a=1, b=2)\n"
-             "    tm2 = PersistentTreeMap.create(c=3, d=4)\n"
-             "    tm3 = tm1 | tm2  # PersistentTreeMap({a: 1, b: 2, c: 3, d: 4})")
+             "    tm1 = PersistentSortedDict.create(a=1, b=2)\n"
+             "    tm2 = PersistentSortedDict.create(c=3, d=4)\n"
+             "    tm3 = tm1 | tm2  # PersistentSortedDict({a: 1, b: 2, c: 3, d: 4})")
 
-        .def("__repr__", &PersistentTreeMap::repr,
+        .def("__repr__", &PersistentSortedDict::repr,
              "String representation of the sorted map.")
 
-        // Additional methods for API consistency with PersistentMap/ArrayMap
-        .def("items_list", &PersistentTreeMap::items,
+        // Additional methods for API consistency with PersistentDict/ArrayMap
+        .def("items_list", &PersistentSortedDict::items,
              "Return list of (key, value) tuples in sorted order.\n\n"
-             "Alias for items() - provided for API consistency with PersistentMap.\n\n"
+             "Alias for items() - provided for API consistency with PersistentDict.\n\n"
              "Returns:\n"
              "    List of (key, value) tuples in ascending key order")
 
         .def("keys",
-             [](const PersistentTreeMap& m) -> py::iterator {
+             [](const PersistentSortedDict& m) -> py::iterator {
                  return py::iter(m.keysList());
              },
              "Iterate over keys in sorted order.\n\n"
@@ -1173,7 +1173,7 @@ PYBIND11_MODULE(pypersistent, m) {
              "    Iterator over keys in ascending order")
 
         .def("values",
-             [](const PersistentTreeMap& m) -> py::iterator {
+             [](const PersistentSortedDict& m) -> py::iterator {
                  return py::iter(m.valuesList());
              },
              "Iterate over values in key-sorted order.\n\n"
@@ -1181,9 +1181,9 @@ PYBIND11_MODULE(pypersistent, m) {
              "    Iterator over values ordered by their keys")
 
         .def("update",
-             [](const PersistentTreeMap& self, py::object other) -> PersistentTreeMap {
+             [](const PersistentSortedDict& self, py::object other) -> PersistentSortedDict {
                  // Reuse the __or__ implementation
-                 PersistentTreeMap result = self;
+                 PersistentSortedDict result = self;
 
                  // Handle dict
                  if (py::isinstance<py::dict>(other)) {
@@ -1195,18 +1195,18 @@ PYBIND11_MODULE(pypersistent, m) {
                          );
                      }
                  }
-                 // Handle PersistentTreeMap
-                 else if (py::isinstance<PersistentTreeMap>(other)) {
-                     const PersistentTreeMap& other_map = other.cast<const PersistentTreeMap&>();
+                 // Handle PersistentSortedDict
+                 else if (py::isinstance<PersistentSortedDict>(other)) {
+                     const PersistentSortedDict& other_map = other.cast<const PersistentSortedDict&>();
                      py::list items = other_map.items();
                      for (auto item : items) {
                          py::list pair = item.cast<py::list>();
                          result = result.assoc(pair[0], pair[1]);
                      }
                  }
-                 // Handle PersistentMap
-                 else if (py::isinstance<PersistentMap>(other)) {
-                     const PersistentMap& other_map = other.cast<const PersistentMap&>();
+                 // Handle PersistentDict
+                 else if (py::isinstance<PersistentDict>(other)) {
+                     const PersistentDict& other_map = other.cast<const PersistentDict&>();
                      py::list items = other_map.itemsList();
                      for (auto item : items) {
                          py::tuple pair = item.cast<py::tuple>();
@@ -1232,7 +1232,7 @@ PYBIND11_MODULE(pypersistent, m) {
                      }
                  }
                  else {
-                     throw py::type_error("Cannot update PersistentTreeMap with non-mapping type");
+                     throw py::type_error("Cannot update PersistentSortedDict with non-mapping type");
                  }
 
                  return result;
@@ -1240,17 +1240,17 @@ PYBIND11_MODULE(pypersistent, m) {
              py::arg("other"),
              "Update map with entries from another mapping.\n\n"
              "Args:\n"
-             "    other: A dict, PersistentTreeMap, PersistentMap, PersistentArrayMap, or any mapping\n\n"
+             "    other: A dict, PersistentSortedDict, PersistentDict, PersistentArrayMap, or any mapping\n\n"
              "Returns:\n"
-             "    A new PersistentTreeMap with entries from both maps (right side wins)\n\n"
+             "    A new PersistentSortedDict with entries from both maps (right side wins)\n\n"
              "Example:\n"
-             "    tm1 = PersistentTreeMap.create(a=1, b=2)\n"
+             "    tm1 = PersistentSortedDict.create(a=1, b=2)\n"
              "    tm2 = tm1.update({'c': 3, 'd': 4})")
 
         .def("merge",
-             [](const PersistentTreeMap& self, py::object other) -> PersistentTreeMap {
+             [](const PersistentSortedDict& self, py::object other) -> PersistentSortedDict {
                  // Same implementation as update (code duplication for simplicity)
-                 PersistentTreeMap result = self;
+                 PersistentSortedDict result = self;
 
                  if (py::isinstance<py::dict>(other)) {
                      py::dict d = other.cast<py::dict>();
@@ -1261,16 +1261,16 @@ PYBIND11_MODULE(pypersistent, m) {
                          );
                      }
                  }
-                 else if (py::isinstance<PersistentTreeMap>(other)) {
-                     const PersistentTreeMap& other_map = other.cast<const PersistentTreeMap&>();
+                 else if (py::isinstance<PersistentSortedDict>(other)) {
+                     const PersistentSortedDict& other_map = other.cast<const PersistentSortedDict&>();
                      py::list items = other_map.items();
                      for (auto item : items) {
                          py::list pair = item.cast<py::list>();
                          result = result.assoc(pair[0], pair[1]);
                      }
                  }
-                 else if (py::isinstance<PersistentMap>(other)) {
-                     const PersistentMap& other_map = other.cast<const PersistentMap&>();
+                 else if (py::isinstance<PersistentDict>(other)) {
+                     const PersistentDict& other_map = other.cast<const PersistentDict&>();
                      py::list items = other_map.itemsList();
                      for (auto item : items) {
                          py::tuple pair = item.cast<py::tuple>();
@@ -1294,7 +1294,7 @@ PYBIND11_MODULE(pypersistent, m) {
                      }
                  }
                  else {
-                     throw py::type_error("Cannot merge PersistentTreeMap with non-mapping type");
+                     throw py::type_error("Cannot merge PersistentSortedDict with non-mapping type");
                  }
 
                  return result;
@@ -1304,54 +1304,54 @@ PYBIND11_MODULE(pypersistent, m) {
              "Args:\n"
              "    other: A mapping to merge with\n\n"
              "Returns:\n"
-             "    A new PersistentTreeMap with merged entries")
+             "    A new PersistentSortedDict with merged entries")
 
         .def("clear",
-             [](const PersistentTreeMap&) -> PersistentTreeMap {
-                 return PersistentTreeMap();
+             [](const PersistentSortedDict&) -> PersistentSortedDict {
+                 return PersistentSortedDict();
              },
-             "Return an empty PersistentTreeMap.\n\n"
+             "Return an empty PersistentSortedDict.\n\n"
              "Returns:\n"
-             "    A new empty PersistentTreeMap")
+             "    A new empty PersistentSortedDict")
 
         .def("copy",
-             [](const PersistentTreeMap& self) -> PersistentTreeMap {
+             [](const PersistentSortedDict& self) -> PersistentSortedDict {
                  return self;  // Immutable, so copy is just a reference
              },
              "Create a shallow copy of the map.\n\n"
              "Since the map is immutable, this returns self.\n\n"
              "Returns:\n"
-             "    The same PersistentTreeMap instance")
+             "    The same PersistentSortedDict instance")
 
         .def("delete",
-             &PersistentTreeMap::dissoc,
+             &PersistentSortedDict::dissoc,
              py::arg("key"),
              "Remove key (alias for dissoc).\n\n"
              "Args:\n"
              "    key: The key to remove\n\n"
              "Returns:\n"
-             "    A new PersistentTreeMap without the key")
+             "    A new PersistentSortedDict without the key")
 
         // Factory methods
-        .def_static("from_dict", &PersistentTreeMap::fromDict,
+        .def_static("from_dict", &PersistentSortedDict::fromDict,
                    py::arg("dict"),
-                   "Create PersistentTreeMap from dictionary.\n\n"
+                   "Create PersistentSortedDict from dictionary.\n\n"
                    "Args:\n"
                    "    dict: A Python dictionary\n\n"
                    "Returns:\n"
-                   "    A new PersistentTreeMap containing all key-value pairs from dict\n\n"
+                   "    A new PersistentSortedDict containing all key-value pairs from dict\n\n"
                    "Note: Keys must support < comparison")
 
-        .def_static("create", &PersistentTreeMap::create,
-                   "Create PersistentTreeMap from keyword arguments.\n\n"
+        .def_static("create", &PersistentSortedDict::create,
+                   "Create PersistentSortedDict from keyword arguments.\n\n"
                    "Example:\n"
-                   "    m = PersistentTreeMap.create(a=1, b=2, c=3)\n\n"
+                   "    m = PersistentSortedDict.create(a=1, b=2, c=3)\n\n"
                    "Returns:\n"
-                   "    A new PersistentTreeMap containing the keyword arguments\n\n"
+                   "    A new PersistentSortedDict containing the keyword arguments\n\n"
                    "Note: Keys must support < comparison");
 
     // Module-level documentation
-    m.attr("__version__") = "2.0.0a3";
+    m.attr("__version__") = "2.0.0b1";
     m.attr("__doc__") = R"doc(
         Persistent Hash Map (HAMT) Implementation in C++
 
@@ -1366,17 +1366,17 @@ PYBIND11_MODULE(pypersistent, m) {
         - Thread-safe: Immutability makes concurrent access safe without locks
 
         Example usage:
-            >>> from pypersistent import PersistentMap
-            >>> m1 = PersistentMap()
+            >>> from pypersistent import PersistentDict
+            >>> m1 = PersistentDict()
             >>> m2 = m1.assoc('name', 'Alice').assoc('age', 30)
             >>> m2.get('name')
             'Alice'
             >>> len(m2)
             2
             >>> m1  # Original unchanged
-            PersistentMap({})
+            PersistentDict({})
             >>> m2
-            PersistentMap({'name': 'Alice', 'age': 30})
+            PersistentDict({'name': 'Alice', 'age': 30})
 
         Performance characteristics:
         - 5-7x faster than pure Python implementation for insertions

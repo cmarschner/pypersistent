@@ -230,7 +230,7 @@ class CollisionNode:
             yield (self.array[i], self.array[i + 1])
 
 
-class PersistentMap:
+class PersistentDict:
     """
     An immutable, persistent hash map implementation using HAMT.
 
@@ -238,7 +238,7 @@ class PersistentMap:
     with structural sharing between versions.
 
     Example:
-        m1 = PersistentMap()
+        m1 = PersistentDict()
         m2 = m1.assoc('a', 1).assoc('b', 2)
         m3 = m2.assoc('c', 3)
 
@@ -258,55 +258,55 @@ class PersistentMap:
             return default
 
         key_hash = hash_value(key)
-        result = self._root.get(0, key_hash, key, PersistentMap._NOT_FOUND)
+        result = self._root.get(0, key_hash, key, PersistentDict._NOT_FOUND)
 
-        if result is PersistentMap._NOT_FOUND:
+        if result is PersistentDict._NOT_FOUND:
             return default
         return result
 
-    def assoc(self, key: Any, val: Any) -> 'PersistentMap':
+    def assoc(self, key: Any, val: Any) -> 'PersistentDict':
         """
-        Associate a key with a value, returning a new PersistentMap.
+        Associate a key with a value, returning a new PersistentDict.
         The original map is unchanged.
         """
         key_hash = hash_value(key)
 
         if self._root is None:
-            return PersistentMap(BitmapNode(0, []).assoc(0, key_hash, key, val), 1)
+            return PersistentDict(BitmapNode(0, []).assoc(0, key_hash, key, val), 1)
 
         # Check if key already exists
-        old_val = self._root.get(0, key_hash, key, PersistentMap._NOT_FOUND)
+        old_val = self._root.get(0, key_hash, key, PersistentDict._NOT_FOUND)
         new_root = self._root.assoc(0, key_hash, key, val)
 
         if new_root is self._root:
             return self
 
-        new_count = self._count if old_val is not PersistentMap._NOT_FOUND else self._count + 1
-        return PersistentMap(new_root, new_count)
+        new_count = self._count if old_val is not PersistentDict._NOT_FOUND else self._count + 1
+        return PersistentDict(new_root, new_count)
 
-    def dissoc(self, key: Any) -> 'PersistentMap':
+    def dissoc(self, key: Any) -> 'PersistentDict':
         """
-        Remove a key, returning a new PersistentMap.
+        Remove a key, returning a new PersistentDict.
         The original map is unchanged.
         """
         if self._root is None:
             return self
 
         key_hash = hash_value(key)
-        old_val = self._root.get(0, key_hash, key, PersistentMap._NOT_FOUND)
+        old_val = self._root.get(0, key_hash, key, PersistentDict._NOT_FOUND)
 
-        if old_val is PersistentMap._NOT_FOUND:
+        if old_val is PersistentDict._NOT_FOUND:
             return self
 
         new_root = self._root.dissoc(0, key_hash, key)
-        return PersistentMap(new_root, self._count - 1)
+        return PersistentDict(new_root, self._count - 1)
 
     def __contains__(self, key: Any) -> bool:
         """Check if a key is in the map."""
         if self._root is None:
             return False
         key_hash = hash_value(key)
-        return self._root.get(0, key_hash, key, PersistentMap._NOT_FOUND) is not PersistentMap._NOT_FOUND
+        return self._root.get(0, key_hash, key, PersistentDict._NOT_FOUND) is not PersistentDict._NOT_FOUND
 
     def __len__(self) -> int:
         """Return the number of key-value pairs in the map."""
@@ -336,11 +336,11 @@ class PersistentMap:
     def __repr__(self) -> str:
         """String representation of the map."""
         items = ', '.join(f'{repr(k)}: {repr(v)}' for k, v in self.items())
-        return f'PersistentMap({{{items}}})'
+        return f'PersistentDict({{{items}}})'
 
     def __eq__(self, other) -> bool:
         """Check equality with another map."""
-        if not isinstance(other, PersistentMap):
+        if not isinstance(other, PersistentDict):
             return False
 
         if len(self) != len(other):
@@ -354,30 +354,30 @@ class PersistentMap:
 
     def __getitem__(self, key: Any) -> Any:
         """Get item using bracket notation. Raises KeyError if not found."""
-        result = self.get(key, PersistentMap._NOT_FOUND)
-        if result is PersistentMap._NOT_FOUND:
+        result = self.get(key, PersistentDict._NOT_FOUND)
+        if result is PersistentDict._NOT_FOUND:
             raise KeyError(key)
         return result
 
     @staticmethod
-    def create(**kwargs) -> 'PersistentMap':
-        """Create a PersistentMap from keyword arguments."""
-        m = PersistentMap()
+    def create(**kwargs) -> 'PersistentDict':
+        """Create a PersistentDict from keyword arguments."""
+        m = PersistentDict()
         for k, v in kwargs.items():
             m = m.assoc(k, v)
         return m
 
     @staticmethod
-    def from_dict(d: dict) -> 'PersistentMap':
-        """Create a PersistentMap from a dictionary."""
-        m = PersistentMap()
+    def from_dict(d: dict) -> 'PersistentDict':
+        """Create a PersistentDict from a dictionary."""
+        m = PersistentDict()
         for k, v in d.items():
             m = m.assoc(k, v)
         return m
 
 
 # Sentinel value for "not found"
-PersistentMap._NOT_FOUND = object()
+PersistentDict._NOT_FOUND = object()
 
 
 if __name__ == '__main__':
@@ -385,7 +385,7 @@ if __name__ == '__main__':
     print("=== Persistent Map Demo ===\n")
 
     # Create an empty map
-    m1 = PersistentMap()
+    m1 = PersistentDict()
     print(f"m1 = {m1}")
     print(f"len(m1) = {len(m1)}\n")
 
@@ -424,12 +424,12 @@ if __name__ == '__main__':
     print()
 
     # Create from dict
-    m5 = PersistentMap.from_dict({'x': 1, 'y': 2, 'z': 3})
+    m5 = PersistentDict.from_dict({'x': 1, 'y': 2, 'z': 3})
     print(f"m5 = {m5}\n")
 
     # Demonstrate structural sharing efficiency
     print("=== Structural Sharing Demo ===")
-    base = PersistentMap()
+    base = PersistentDict()
     for i in range(1000):
         base = base.assoc(f'key{i}', i)
 

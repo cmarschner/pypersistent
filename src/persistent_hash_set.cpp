@@ -2,31 +2,31 @@
 #include <sstream>
 
 // Constructors
-PersistentHashSet::PersistentHashSet() : map_() {}
+PersistentSet::PersistentSet() : map_() {}
 
-PersistentHashSet::PersistentHashSet(const PersistentMap& map) : map_(map) {}
+PersistentSet::PersistentSet(const PersistentDict& map) : map_(map) {}
 
 // Core operations
-PersistentHashSet PersistentHashSet::conj(const py::object& elem) const {
+PersistentSet PersistentSet::conj(const py::object& elem) const {
     // Add element by associating it with py::none()
-    PersistentMap newMap = map_.assoc(elem, py::none());
-    return PersistentHashSet(newMap);
+    PersistentDict newMap = map_.assoc(elem, py::none());
+    return PersistentSet(newMap);
 }
 
-PersistentHashSet PersistentHashSet::disj(const py::object& elem) const {
+PersistentSet PersistentSet::disj(const py::object& elem) const {
     // Remove element by dissociating the key
-    PersistentMap newMap = map_.dissoc(elem);
-    return PersistentHashSet(newMap);
+    PersistentDict newMap = map_.dissoc(elem);
+    return PersistentSet(newMap);
 }
 
-bool PersistentHashSet::contains(const py::object& elem) const {
+bool PersistentSet::contains(const py::object& elem) const {
     return map_.contains(elem);
 }
 
 // Set operations
-PersistentHashSet PersistentHashSet::union_(const PersistentHashSet& other) const {
+PersistentSet PersistentSet::union_(const PersistentSet& other) const {
     // Start with this set, add all elements from other
-    PersistentHashSet result = *this;
+    PersistentSet result = *this;
     py::list items = other.map_.keysList();
     for (auto elem : items) {
         result = result.conj(elem.cast<py::object>());
@@ -34,12 +34,12 @@ PersistentHashSet PersistentHashSet::union_(const PersistentHashSet& other) cons
     return result;
 }
 
-PersistentHashSet PersistentHashSet::intersection(const PersistentHashSet& other) const {
+PersistentSet PersistentSet::intersection(const PersistentSet& other) const {
     // Iterate smaller set, check containment in larger
-    const PersistentHashSet& smaller = (size() <= other.size()) ? *this : other;
-    const PersistentHashSet& larger = (size() <= other.size()) ? other : *this;
+    const PersistentSet& smaller = (size() <= other.size()) ? *this : other;
+    const PersistentSet& larger = (size() <= other.size()) ? other : *this;
 
-    PersistentHashSet result;
+    PersistentSet result;
     py::list items = smaller.map_.keysList();
     for (auto elem : items) {
         if (larger.contains(elem.cast<py::object>())) {
@@ -49,9 +49,9 @@ PersistentHashSet PersistentHashSet::intersection(const PersistentHashSet& other
     return result;
 }
 
-PersistentHashSet PersistentHashSet::difference(const PersistentHashSet& other) const {
+PersistentSet PersistentSet::difference(const PersistentSet& other) const {
     // Start with this set, remove all elements in other
-    PersistentHashSet result = *this;
+    PersistentSet result = *this;
     py::list items = other.map_.keysList();
     for (auto elem : items) {
         result = result.disj(elem.cast<py::object>());
@@ -59,15 +59,15 @@ PersistentHashSet PersistentHashSet::difference(const PersistentHashSet& other) 
     return result;
 }
 
-PersistentHashSet PersistentHashSet::symmetric_difference(const PersistentHashSet& other) const {
+PersistentSet PersistentSet::symmetric_difference(const PersistentSet& other) const {
     // (A - B) ∪ (B - A)
-    PersistentHashSet aMinusB = this->difference(other);
-    PersistentHashSet bMinusA = other.difference(*this);
+    PersistentSet aMinusB = this->difference(other);
+    PersistentSet bMinusA = other.difference(*this);
     return aMinusB.union_(bMinusA);
 }
 
 // Set predicates
-bool PersistentHashSet::issubset(const PersistentHashSet& other) const {
+bool PersistentSet::issubset(const PersistentSet& other) const {
     // All elements of this must be in other
     if (size() > other.size()) return false;
 
@@ -80,15 +80,15 @@ bool PersistentHashSet::issubset(const PersistentHashSet& other) const {
     return true;
 }
 
-bool PersistentHashSet::issuperset(const PersistentHashSet& other) const {
+bool PersistentSet::issuperset(const PersistentSet& other) const {
     // Other must be subset of this
     return other.issubset(*this);
 }
 
-bool PersistentHashSet::isdisjoint(const PersistentHashSet& other) const {
+bool PersistentSet::isdisjoint(const PersistentSet& other) const {
     // No elements in common
-    const PersistentHashSet& smaller = (size() <= other.size()) ? *this : other;
-    const PersistentHashSet& larger = (size() <= other.size()) ? other : *this;
+    const PersistentSet& smaller = (size() <= other.size()) ? *this : other;
+    const PersistentSet& larger = (size() <= other.size()) ? other : *this;
 
     py::list items = smaller.map_.keysList();
     for (auto elem : items) {
@@ -100,8 +100,8 @@ bool PersistentHashSet::isdisjoint(const PersistentHashSet& other) const {
 }
 
 // Update method
-PersistentHashSet PersistentHashSet::update(const py::object& other) const {
-    PersistentHashSet result = *this;
+PersistentSet PersistentSet::update(const py::object& other) const {
+    PersistentSet result = *this;
 
     // Handle set
     if (py::isinstance<py::set>(other)) {
@@ -112,9 +112,9 @@ PersistentHashSet PersistentHashSet::update(const py::object& other) const {
         return result;
     }
 
-    // Handle PersistentHashSet
-    if (py::isinstance<PersistentHashSet>(other)) {
-        return union_(other.cast<const PersistentHashSet&>());
+    // Handle PersistentSet
+    if (py::isinstance<PersistentSet>(other)) {
+        return union_(other.cast<const PersistentSet&>());
     }
 
     // Handle list or other iterable
@@ -135,22 +135,22 @@ PersistentHashSet PersistentHashSet::update(const py::object& other) const {
         }
         return result;
     } catch (const py::error_already_set&) {
-        throw std::invalid_argument("update() requires a set, PersistentHashSet, list, or iterable");
+        throw std::invalid_argument("update() requires a set, PersistentSet, list, or iterable");
     }
 }
 
 // Iteration
-SetIterator PersistentHashSet::iter() const {
+SetIterator PersistentSet::iter() const {
     return SetIterator(map_);
 }
 
 // Fast materialized iteration
-py::list PersistentHashSet::list() const {
+py::list PersistentSet::list() const {
     return map_.keysList();
 }
 
 // Equality
-bool PersistentHashSet::operator==(const PersistentHashSet& other) const {
+bool PersistentSet::operator==(const PersistentSet& other) const {
     // Fast path: same object
     if (this == &other) return true;
 
@@ -168,9 +168,9 @@ bool PersistentHashSet::operator==(const PersistentHashSet& other) const {
 }
 
 // String representation
-std::string PersistentHashSet::repr() const {
+std::string PersistentSet::repr() const {
     std::ostringstream oss;
-    oss << "PersistentHashSet({";
+    oss << "PersistentSet({";
 
     if (size() > 0) {
         py::list items = map_.keysList();
@@ -189,24 +189,24 @@ std::string PersistentHashSet::repr() const {
 }
 
 // Factory methods
-PersistentHashSet PersistentHashSet::fromSet(const py::set& s) {
-    PersistentHashSet result;
+PersistentSet PersistentSet::fromSet(const py::set& s) {
+    PersistentSet result;
     for (auto elem : s) {
         result = result.conj(py::reinterpret_borrow<py::object>(elem));
     }
     return result;
 }
 
-PersistentHashSet PersistentHashSet::fromList(const py::list& l) {
-    PersistentHashSet result;
+PersistentSet PersistentSet::fromList(const py::list& l) {
+    PersistentSet result;
     for (auto elem : l) {
         result = result.conj(py::reinterpret_borrow<py::object>(elem));
     }
     return result;
 }
 
-PersistentHashSet PersistentHashSet::fromIterable(const py::object& iterable) {
-    PersistentHashSet result;
+PersistentSet PersistentSet::fromIterable(const py::object& iterable) {
+    PersistentSet result;
     try {
         py::iterator it = py::iter(iterable);
         while (it != py::iterator::sentinel()) {
@@ -219,8 +219,8 @@ PersistentHashSet PersistentHashSet::fromIterable(const py::object& iterable) {
     }
 }
 
-PersistentHashSet PersistentHashSet::create(const py::args& args) {
-    PersistentHashSet result;
+PersistentSet PersistentSet::create(const py::args& args) {
+    PersistentSet result;
     for (auto elem : args) {
         result = result.conj(py::reinterpret_borrow<py::object>(elem));
     }

@@ -1,5 +1,5 @@
 """
-Performance comparison between PersistentMap and Python's built-in dict.
+Performance comparison between PersistentDict and Python's built-in dict.
 
 This test suite measures various operations to understand the trade-offs
 between persistent immutable data structures and mutable dictionaries.
@@ -11,7 +11,7 @@ import time
 import sys
 import statistics
 from typing import Callable, Any
-from pypersistent import PersistentMap
+from pypersistent import PersistentDict
 
 
 class BenchmarkResult:
@@ -77,12 +77,12 @@ def format_result(bench: BenchmarkResult, show_variance: bool = True) -> str:
 def run_comparison(name: str, dict_func: Callable, pmap_func: Callable,
                    runs: int = 5, show_stats: bool = True):
     """
-    Run a statistical comparison between dict and PersistentMap.
+    Run a statistical comparison between dict and PersistentDict.
 
     Args:
         name: Test name
         dict_func: Function implementing dict version
-        pmap_func: Function implementing PersistentMap version
+        pmap_func: Function implementing PersistentDict version
         runs: Number of runs for statistics
         show_stats: Whether to show detailed statistics
     """
@@ -92,7 +92,7 @@ def run_comparison(name: str, dict_func: Callable, pmap_func: Callable,
     ratio = pmap_bench.median / dict_bench.median
 
     print(f"dict:          {format_result(dict_bench)}")
-    print(f"PersistentMap: {format_result(pmap_bench)}")
+    print(f"PersistentDict: {format_result(pmap_bench)}")
     print(f"Ratio:         {ratio:.2f}x slower")
 
     # Show detailed stats if variance is high or requested
@@ -117,9 +117,9 @@ def benchmark_insertion(n: int):
             d[f'key{i}'] = i
         return d
 
-    # PersistentMap
+    # PersistentDict
     def pmap_insert():
-        m = PersistentMap()
+        m = PersistentDict()
         for i in range(n):
             m = m.assoc(f'key{i}', i)
         return m
@@ -128,7 +128,7 @@ def benchmark_insertion(n: int):
     pmap_bench = timeit(pmap_insert, runs=5)
 
     print(f"dict:          {format_result(dict_bench)}")
-    print(f"PersistentMap: {format_result(pmap_bench)}")
+    print(f"PersistentDict: {format_result(pmap_bench)}")
     ratio = pmap_bench.median / dict_bench.median
     print(f"Ratio:         {ratio:.2f}x slower")
 
@@ -141,7 +141,7 @@ def benchmark_insertion(n: int):
     return dict_bench.result, pmap_bench.result
 
 
-def benchmark_lookup(d: dict, m: PersistentMap, n: int):
+def benchmark_lookup(d: dict, m: PersistentDict, n: int):
     """Test lookup performance."""
     print(f"\n=== Lookup Test (n={n:,}) ===")
 
@@ -152,7 +152,7 @@ def benchmark_lookup(d: dict, m: PersistentMap, n: int):
             total += d.get(f'key{i}', 0)
         return total
 
-    # PersistentMap
+    # PersistentDict
     def pmap_lookup():
         total = 0
         for i in range(n):
@@ -163,11 +163,11 @@ def benchmark_lookup(d: dict, m: PersistentMap, n: int):
     pmap_bench = timeit(pmap_lookup)
 
     print(f"dict:          {format_result(dict_bench, show_variance=False)}")
-    print(f"PersistentMap: {format_result(pmap_bench, show_variance=False)}")
+    print(f"PersistentDict: {format_result(pmap_bench, show_variance=False)}")
     print(f"Ratio:         {pmap_bench.median / dict_bench.median:.2f}x slower")
 
 
-def benchmark_deletion(d: dict, m: PersistentMap, n: int):
+def benchmark_deletion(d: dict, m: PersistentDict, n: int):
     """Test deletion performance."""
     print(f"\n=== Deletion Test (n={n:,}) ===")
 
@@ -178,7 +178,7 @@ def benchmark_deletion(d: dict, m: PersistentMap, n: int):
             del d_copy[f'key{i}']
         return d_copy
 
-    # PersistentMap
+    # PersistentDict
     def pmap_delete():
         m_copy = m
         for i in range(0, n, 10):
@@ -189,11 +189,11 @@ def benchmark_deletion(d: dict, m: PersistentMap, n: int):
     pmap_bench = timeit(pmap_delete)
 
     print(f"dict:          {format_result(dict_bench, show_variance=False)}")
-    print(f"PersistentMap: {format_result(pmap_bench, show_variance=False)}")
+    print(f"PersistentDict: {format_result(pmap_bench, show_variance=False)}")
     print(f"Ratio:         {pmap_bench.median / dict_bench.median:.2f}x slower")
 
 
-def benchmark_iteration(d: dict, m: PersistentMap, n: int):
+def benchmark_iteration(d: dict, m: PersistentDict, n: int):
     """Test iteration performance."""
     print(f"\n=== Iteration Test (n={n:,}) ===")
 
@@ -204,7 +204,7 @@ def benchmark_iteration(d: dict, m: PersistentMap, n: int):
             total += val
         return total
 
-    # PersistentMap
+    # PersistentDict
     def pmap_iter():
         total = 0
         for key, val in m.items():
@@ -215,11 +215,11 @@ def benchmark_iteration(d: dict, m: PersistentMap, n: int):
     pmap_bench = timeit(pmap_iter)
 
     print(f"dict:          {format_result(dict_bench, show_variance=False)}")
-    print(f"PersistentMap: {format_result(pmap_bench, show_variance=False)}")
+    print(f"PersistentDict: {format_result(pmap_bench, show_variance=False)}")
     print(f"Ratio:         {pmap_bench.median / dict_bench.median:.2f}x slower")
 
 
-def benchmark_update(d: dict, m: PersistentMap, n: int):
+def benchmark_update(d: dict, m: PersistentDict, n: int):
     """Test update performance."""
     print(f"\n=== Update Test (n={n:,}) ===")
 
@@ -230,7 +230,7 @@ def benchmark_update(d: dict, m: PersistentMap, n: int):
             d_copy[f'key{i}'] = i * 2
         return d_copy
 
-    # PersistentMap - create new version
+    # PersistentDict - create new version
     def pmap_update():
         m_copy = m
         for i in range(0, n, 10):
@@ -241,13 +241,13 @@ def benchmark_update(d: dict, m: PersistentMap, n: int):
     pmap_bench = timeit(pmap_update)
 
     print(f"dict:          {format_result(dict_bench, show_variance=False)}")
-    print(f"PersistentMap: {format_result(pmap_bench, show_variance=False)}")
+    print(f"PersistentDict: {format_result(pmap_bench, show_variance=False)}")
     print(f"Ratio:         {pmap_bench.median / dict_bench.median:.2f}x slower")
 
 
-def benchmark_structural_sharing(m: PersistentMap, n: int):
+def benchmark_structural_sharing(m: PersistentDict, n: int):
     """
-    Test the key advantage of PersistentMap: creating multiple variants efficiently.
+    Test the key advantage of PersistentDict: creating multiple variants efficiently.
     This is where persistent data structures shine - you can cheaply create
     many variations that share most of their structure.
 
@@ -256,7 +256,7 @@ def benchmark_structural_sharing(m: PersistentMap, n: int):
     print(f"\n=== Structural Sharing Test (n={n:,}) ===")
     print("Creating 100 variants with one modification each...")
 
-    # PersistentMap - structural sharing
+    # PersistentDict - structural sharing
     def pmap_variants():
         variants = []
         for i in range(100):
@@ -281,8 +281,8 @@ def benchmark_structural_sharing(m: PersistentMap, n: int):
     ratio = dict_bench.median / pmap_bench.median
 
     print(f"dict (copy):   {format_result(dict_bench)}")
-    print(f"PersistentMap: {format_result(pmap_bench)}")
-    print(f"Ratio:         {ratio:.2f}x faster (PersistentMap wins!)")
+    print(f"PersistentDict: {format_result(pmap_bench)}")
+    print(f"Ratio:         {ratio:.2f}x faster (PersistentDict wins!)")
 
     # Always show variance for this critical benchmark
     print(f"  Statistics:")
@@ -302,7 +302,7 @@ def benchmark_memory_footprint(n: int):
     for i in range(n):
         d[f'key{i}'] = i
 
-    m = PersistentMap()
+    m = PersistentDict()
     for i in range(n):
         m = m.assoc(f'key{i}', i)
 
@@ -310,11 +310,11 @@ def benchmark_memory_footprint(n: int):
     pmap_size = sys.getsizeof(m)
 
     print(f"dict (approximate):          {dict_size:,} bytes")
-    print(f"PersistentMap (approximate): {pmap_size:,} bytes")
+    print(f"PersistentDict (approximate): {pmap_size:,} bytes")
     print(f"Note: This is a rough estimate and doesn't include all internal structures")
 
 
-def benchmark_contains(d: dict, m: PersistentMap, n: int):
+def benchmark_contains(d: dict, m: PersistentDict, n: int):
     """Test membership checking performance."""
     print(f"\n=== Contains Test (n={n:,}) ===")
 
@@ -326,7 +326,7 @@ def benchmark_contains(d: dict, m: PersistentMap, n: int):
                 count += 1
         return count
 
-    # PersistentMap
+    # PersistentDict
     def pmap_contains():
         count = 0
         for i in range(n):
@@ -338,7 +338,7 @@ def benchmark_contains(d: dict, m: PersistentMap, n: int):
     pmap_bench = timeit(pmap_contains)
 
     print(f"dict:          {format_result(dict_bench, show_variance=False)}")
-    print(f"PersistentMap: {format_result(pmap_bench, show_variance=False)}")
+    print(f"PersistentDict: {format_result(pmap_bench, show_variance=False)}")
     print(f"Ratio:         {pmap_bench.median / dict_bench.median:.2f}x slower")
 
 
@@ -353,9 +353,9 @@ def benchmark_from_dict(n: int):
     def dict_from_dict():
         return dict(source_dict)
 
-    # PersistentMap - build from dict
+    # PersistentDict - build from dict
     def pmap_from_dict():
-        return PersistentMap.from_dict(source_dict)
+        return PersistentDict.from_dict(source_dict)
 
     # Use robust statistical benchmarking with 7 runs for critical test
     dict_bench = timeit(dict_from_dict, runs=7)
@@ -364,7 +364,7 @@ def benchmark_from_dict(n: int):
     ratio = pmap_bench.median / dict_bench.median
 
     print(f"dict.copy():             {format_result(dict_bench)}")
-    print(f"PersistentMap.from_dict: {format_result(pmap_bench)}")
+    print(f"PersistentDict.from_dict: {format_result(pmap_bench)}")
     print(f"Ratio:                   {ratio:.2f}x slower")
 
     # Always show variance for this critical benchmark
@@ -385,9 +385,9 @@ def benchmark_merge(n: int):
     dict1 = {f'key{i}': i for i in range(n // 2)}
     dict2 = {f'key{i + n//2}': i + n//2 for i in range(n // 2)}
 
-    # Build two PersistentMaps to merge
-    pmap1 = PersistentMap.from_dict(dict1)
-    pmap2 = PersistentMap.from_dict(dict2)
+    # Build two PersistentDicts to merge
+    pmap1 = PersistentDict.from_dict(dict1)
+    pmap2 = PersistentDict.from_dict(dict2)
 
     # Python dict - must copy and update
     def dict_merge():
@@ -395,7 +395,7 @@ def benchmark_merge(n: int):
         result.update(dict2)
         return result
 
-    # PersistentMap - structural sharing
+    # PersistentDict - structural sharing
     def pmap_merge():
         return pmap1.merge(pmap2)
 
@@ -403,7 +403,7 @@ def benchmark_merge(n: int):
     pmap_bench = timeit(pmap_merge)
 
     print(f"dict (copy + update): {format_result(dict_bench, show_variance=False)}")
-    print(f"PersistentMap.merge:  {format_result(pmap_bench, show_variance=False)}")
+    print(f"PersistentDict.merge:  {format_result(pmap_bench, show_variance=False)}")
     print(f"Ratio:                {pmap_bench.median / dict_bench.median:.2f}x slower")
 
     # Also test the | operator
@@ -411,13 +411,13 @@ def benchmark_merge(n: int):
         return pmap1 | pmap2
 
     pmap_op_bench = timeit(pmap_merge_operator)
-    print(f"PersistentMap (| op): {format_result(pmap_op_bench, show_variance=False)}")
+    print(f"PersistentDict (| op): {format_result(pmap_op_bench, show_variance=False)}")
 
 
 def run_benchmark_suite(sizes: list[int]):
     """Run complete benchmark suite for different sizes."""
     print("=" * 70)
-    print("PERSISTENT MAP vs PYTHON DICT - PERFORMANCE COMPARISON")
+    print("PERSISTENT DICT vs PYTHON DICT - PERFORMANCE COMPARISON")
     print("=" * 70)
 
     for n in sizes:
@@ -446,7 +446,7 @@ def run_benchmark_suite(sizes: list[int]):
     print("SUMMARY")
     print("=" * 70)
     print("""
-PersistentMap Trade-offs:
+PersistentDict Trade-offs:
 
 ADVANTAGES:
   - Immutability: Thread-safe, no defensive copying needed

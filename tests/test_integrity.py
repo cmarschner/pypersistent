@@ -1,28 +1,28 @@
 """
-Property-based integrity tests for PersistentMap.
+Property-based integrity tests for PersistentDict.
 
-Tests verify correctness by performing operations on both PersistentMap and
+Tests verify correctness by performing operations on both PersistentDict and
 Python dict in parallel, then comparing results to ensure they match.
 """
 
 import pytest
-from pypersistent import PersistentMap
+from pypersistent import PersistentDict
 import random
 
 
 class TestIntegrityBasic:
-    """Basic integrity tests comparing PersistentMap to dict."""
+    """Basic integrity tests comparing PersistentDict to dict."""
 
     def _assert_maps_equal(self, pmap, pydict, msg=""):
-        """Assert PersistentMap and dict have identical contents."""
-        # Convert PersistentMap to dict for comparison
+        """Assert PersistentDict and dict have identical contents."""
+        # Convert PersistentDict to dict for comparison
         pmap_dict = dict(pmap.items())
-        assert pmap_dict == pydict, f"{msg}\nPersistentMap: {pmap_dict}\nPython dict: {pydict}"
+        assert pmap_dict == pydict, f"{msg}\nPersistentDict: {pmap_dict}\nPython dict: {pydict}"
         assert len(pmap) == len(pydict), f"{msg}\nLength mismatch"
 
     def test_single_assoc(self):
         """Test single key insertion."""
-        pmap = PersistentMap()
+        pmap = PersistentDict()
         pydict = {}
 
         pmap = pmap.assoc('key1', 'value1')
@@ -32,7 +32,7 @@ class TestIntegrityBasic:
 
     def test_multiple_assoc(self):
         """Test multiple key insertions."""
-        pmap = PersistentMap()
+        pmap = PersistentDict()
         pydict = {}
 
         # Add 100 keys
@@ -44,7 +44,7 @@ class TestIntegrityBasic:
 
     def test_assoc_update(self):
         """Test updating existing keys."""
-        pmap = PersistentMap()
+        pmap = PersistentDict()
         pydict = {}
 
         # Add initial keys
@@ -61,7 +61,7 @@ class TestIntegrityBasic:
 
     def test_dissoc(self):
         """Test key removal."""
-        pmap = PersistentMap()
+        pmap = PersistentDict()
         pydict = {}
 
         # Add keys
@@ -78,7 +78,7 @@ class TestIntegrityBasic:
 
     def test_dissoc_nonexistent(self):
         """Test removing nonexistent keys."""
-        pmap = PersistentMap()
+        pmap = PersistentDict()
         pydict = {}
 
         # Add some keys
@@ -96,7 +96,7 @@ class TestIntegrityBasic:
     def test_from_dict(self):
         """Test creating from dict."""
         pydict = {f'key{i}': i for i in range(1000)}
-        pmap = PersistentMap.from_dict(pydict)
+        pmap = PersistentDict.from_dict(pydict)
 
         self._assert_maps_equal(pmap, pydict, "After from_dict")
 
@@ -105,22 +105,22 @@ class TestIntegrityMerge:
     """Test merge operation integrity."""
 
     def _assert_maps_equal(self, pmap, pydict, msg=""):
-        """Assert PersistentMap and dict have identical contents."""
+        """Assert PersistentDict and dict have identical contents."""
         pmap_dict = dict(pmap.items())
-        assert pmap_dict == pydict, f"{msg}\nPersistentMap: {pmap_dict}\nPython dict: {pydict}"
+        assert pmap_dict == pydict, f"{msg}\nPersistentDict: {pmap_dict}\nPython dict: {pydict}"
         assert len(pmap) == len(pydict), f"{msg}\nLength mismatch"
 
     def test_merge_disjoint(self):
         """Test merging maps with no overlapping keys."""
         # Create first map
-        pmap1 = PersistentMap()
+        pmap1 = PersistentDict()
         dict1 = {}
         for i in range(500):
             pmap1 = pmap1.assoc(f'a{i}', i)
             dict1[f'a{i}'] = i
 
         # Create second map (disjoint keys)
-        pmap2 = PersistentMap()
+        pmap2 = PersistentDict()
         dict2 = {}
         for i in range(500):
             pmap2 = pmap2.assoc(f'b{i}', i)
@@ -135,14 +135,14 @@ class TestIntegrityMerge:
     def test_merge_overlapping(self):
         """Test merging maps with overlapping keys."""
         # Create first map
-        pmap1 = PersistentMap()
+        pmap1 = PersistentDict()
         dict1 = {}
         for i in range(1000):
             pmap1 = pmap1.assoc(f'key{i}', f'old{i}')
             dict1[f'key{i}'] = f'old{i}'
 
         # Create second map (overlapping keys)
-        pmap2 = PersistentMap()
+        pmap2 = PersistentDict()
         dict2 = {}
         for i in range(500, 1500):
             pmap2 = pmap2.assoc(f'key{i}', f'new{i}')
@@ -157,14 +157,14 @@ class TestIntegrityMerge:
     def test_merge_complete_overlap(self):
         """Test merging maps with complete key overlap (all updates)."""
         # Create first map
-        pmap1 = PersistentMap()
+        pmap1 = PersistentDict()
         dict1 = {}
         for i in range(500):
             pmap1 = pmap1.assoc(f'key{i}', i)
             dict1[f'key{i}'] = i
 
         # Create second map (same keys, different values)
-        pmap2 = PersistentMap()
+        pmap2 = PersistentDict()
         dict2 = {}
         for i in range(500):
             pmap2 = pmap2.assoc(f'key{i}', i * 100)
@@ -179,10 +179,10 @@ class TestIntegrityMerge:
     def test_merge_empty(self):
         """Test merging with empty maps."""
         # Non-empty with empty
-        pmap1 = PersistentMap.from_dict({f'key{i}': i for i in range(100)})
+        pmap1 = PersistentDict.from_dict({f'key{i}': i for i in range(100)})
         dict1 = {f'key{i}': i for i in range(100)}
 
-        pmap2 = PersistentMap()
+        pmap2 = PersistentDict()
         dict2 = {}
 
         pmap_merged = pmap1 | dict(pmap2.items())
@@ -199,11 +199,11 @@ class TestIntegrityMerge:
     def test_merge_large(self):
         """Test merging large maps (1M total elements)."""
         # Create first map (500K elements)
-        pmap1 = PersistentMap.from_dict({i: i * 2 for i in range(500000)})
+        pmap1 = PersistentDict.from_dict({i: i * 2 for i in range(500000)})
         dict1 = {i: i * 2 for i in range(500000)}
 
         # Create second map (500K elements, 250K overlap)
-        pmap2 = PersistentMap.from_dict({i: i * 3 for i in range(250000, 750000)})
+        pmap2 = PersistentDict.from_dict({i: i * 3 for i in range(250000, 750000)})
         dict2 = {i: i * 3 for i in range(250000, 750000)}
 
         # Merge
@@ -217,15 +217,15 @@ class TestIntegritySequences:
     """Test complex sequences of operations."""
 
     def _assert_maps_equal(self, pmap, pydict, msg=""):
-        """Assert PersistentMap and dict have identical contents."""
+        """Assert PersistentDict and dict have identical contents."""
         pmap_dict = dict(pmap.items())
-        assert pmap_dict == pydict, f"{msg}\nPersistentMap: {pmap_dict}\nPython dict: {pydict}"
+        assert pmap_dict == pydict, f"{msg}\nPersistentDict: {pmap_dict}\nPython dict: {pydict}"
         assert len(pmap) == len(pydict), f"{msg}\nLength mismatch"
 
     def test_random_operations(self):
         """Test random sequence of operations."""
         random.seed(42)  # Reproducible
-        pmap = PersistentMap()
+        pmap = PersistentDict()
         pydict = {}
 
         # Perform 1000 random operations
@@ -255,7 +255,7 @@ class TestIntegritySequences:
 
     def test_build_modify_rebuild(self):
         """Test building, modifying, and rebuilding a map."""
-        pmap = PersistentMap()
+        pmap = PersistentDict()
         pydict = {}
 
         # Phase 1: Build
@@ -286,7 +286,7 @@ class TestIntegritySequences:
     def test_multiple_versions(self):
         """Test creating multiple versions and verifying each."""
         # Base map
-        base_pmap = PersistentMap()
+        base_pmap = PersistentDict()
         base_dict = {}
         for i in range(100):
             base_pmap = base_pmap.assoc(f'base{i}', i)
@@ -321,14 +321,14 @@ class TestIntegrityEdgeCases:
     """Test edge cases and special values."""
 
     def _assert_maps_equal(self, pmap, pydict, msg=""):
-        """Assert PersistentMap and dict have identical contents."""
+        """Assert PersistentDict and dict have identical contents."""
         pmap_dict = dict(pmap.items())
-        assert pmap_dict == pydict, f"{msg}\nPersistentMap: {pmap_dict}\nPython dict: {pydict}"
+        assert pmap_dict == pydict, f"{msg}\nPersistentDict: {pmap_dict}\nPython dict: {pydict}"
         assert len(pmap) == len(pydict), f"{msg}\nLength mismatch"
 
     def test_none_values(self):
         """Test None as values."""
-        pmap = PersistentMap()
+        pmap = PersistentDict()
         pydict = {}
 
         for i in range(50):
@@ -339,7 +339,7 @@ class TestIntegrityEdgeCases:
 
     def test_mixed_types(self):
         """Test mixed key and value types."""
-        pmap = PersistentMap()
+        pmap = PersistentDict()
         pydict = {}
 
         # String keys
@@ -370,7 +370,7 @@ class TestIntegrityEdgeCases:
 
     def test_large_values(self):
         """Test with large string values."""
-        pmap = PersistentMap()
+        pmap = PersistentDict()
         pydict = {}
 
         # Add keys with large values
@@ -383,7 +383,7 @@ class TestIntegrityEdgeCases:
 
     def test_empty_strings(self):
         """Test empty string keys and values."""
-        pmap = PersistentMap()
+        pmap = PersistentDict()
         pydict = {}
 
         # Empty string as key
@@ -398,7 +398,7 @@ class TestIntegrityEdgeCases:
 
     def test_unicode_keys(self):
         """Test Unicode keys and values."""
-        pmap = PersistentMap()
+        pmap = PersistentDict()
         pydict = {}
 
         unicode_keys = ['日本語', 'русский', 'العربية', '🔥emoji🎉', 'Ñoño']
@@ -413,14 +413,14 @@ class TestIntegrityImmutability:
     """Test that operations preserve immutability while maintaining correctness."""
 
     def _assert_maps_equal(self, pmap, pydict, msg=""):
-        """Assert PersistentMap and dict have identical contents."""
+        """Assert PersistentDict and dict have identical contents."""
         pmap_dict = dict(pmap.items())
-        assert pmap_dict == pydict, f"{msg}\nPersistentMap: {pmap_dict}\nPython dict: {pydict}"
+        assert pmap_dict == pydict, f"{msg}\nPersistentDict: {pmap_dict}\nPython dict: {pydict}"
 
     def test_original_unchanged_after_assoc(self):
         """Test that original map unchanged after assoc."""
         # Build original maps
-        pmap1 = PersistentMap()
+        pmap1 = PersistentDict()
         dict1 = {}
         for i in range(100):
             pmap1 = pmap1.assoc(f'key{i}', i)
@@ -443,7 +443,7 @@ class TestIntegrityImmutability:
     def test_original_unchanged_after_dissoc(self):
         """Test that original map unchanged after dissoc."""
         # Build original maps
-        pmap1 = PersistentMap()
+        pmap1 = PersistentDict()
         dict1 = {}
         for i in range(100):
             pmap1 = pmap1.assoc(f'key{i}', i)
@@ -465,7 +465,7 @@ class TestIntegrityImmutability:
     def test_original_unchanged_after_merge(self):
         """Test that original maps unchanged after merge."""
         # Build first map
-        pmap1 = PersistentMap()
+        pmap1 = PersistentDict()
         dict1 = {}
         for i in range(100):
             pmap1 = pmap1.assoc(f'a{i}', i)
@@ -474,7 +474,7 @@ class TestIntegrityImmutability:
         dict1_copy = dict1.copy()
 
         # Build second map
-        pmap2 = PersistentMap()
+        pmap2 = PersistentDict()
         dict2 = {}
         for i in range(100):
             pmap2 = pmap2.assoc(f'b{i}', i)

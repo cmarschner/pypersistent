@@ -1,21 +1,21 @@
-"""Unit tests for PersistentMap C++ implementation."""
+"""Unit tests for PersistentDict C++ implementation."""
 
 import pytest
-from pypersistent import PersistentMap
+from pypersistent import PersistentDict
 
 
-class TestPersistentMapBasics:
-    """Test basic operations on PersistentMap."""
+class TestPersistentDictBasics:
+    """Test basic operations on PersistentDict."""
 
     def test_empty_map_creation(self):
-        """Test creating an empty PersistentMap."""
-        m = PersistentMap()
+        """Test creating an empty PersistentDict."""
+        m = PersistentDict()
         assert len(m) == 0
-        assert repr(m) == "PersistentMap({})"
+        assert repr(m) == "PersistentDict({})"
 
     def test_basic_assoc(self):
         """Test basic association of key-value pairs."""
-        m = PersistentMap()
+        m = PersistentDict()
         m2 = m.assoc('name', 'Alice').assoc('age', 30).assoc('city', 'NYC')
 
         assert len(m2) == 3
@@ -26,7 +26,7 @@ class TestPersistentMapBasics:
 
     def test_contains(self):
         """Test membership checking with 'in' operator."""
-        m = PersistentMap()
+        m = PersistentDict()
         m2 = m.assoc('a', 1).assoc('b', 2).assoc('c', 3)
 
         assert 'a' in m2
@@ -43,19 +43,19 @@ class TestPersistentMapBasics:
 
     def test_get_with_default(self):
         """Test get method with default values."""
-        m = PersistentMap().assoc('key', 'value')
+        m = PersistentDict().assoc('key', 'value')
 
         assert m.get('key') == 'value'
         assert m.get('nonexistent') is None
         assert m.get('nonexistent', 'default') == 'default'
 
 
-class TestPersistentMapImmutability:
+class TestPersistentDictImmutability:
     """Test immutability guarantees."""
 
     def test_immutability(self):
         """Test that original map remains unchanged after creating new versions."""
-        m1 = PersistentMap()
+        m1 = PersistentDict()
         m2 = m1.assoc('name', 'Alice').assoc('age', 30).assoc('city', 'NYC')
 
         # m1 should still be empty
@@ -68,7 +68,7 @@ class TestPersistentMapImmutability:
 
     def test_update_existing_key(self):
         """Test updating an existing key creates a new map."""
-        m2 = PersistentMap().assoc('name', 'Alice').assoc('age', 30).assoc('city', 'NYC')
+        m2 = PersistentDict().assoc('name', 'Alice').assoc('age', 30).assoc('city', 'NYC')
         m3 = m2.assoc('age', 31).assoc('country', 'USA')
 
         # New map has updated value
@@ -83,7 +83,7 @@ class TestPersistentMapImmutability:
 
     def test_dissoc(self):
         """Test that dissoc removes a key and creates a new map."""
-        m3 = PersistentMap().assoc('name', 'Alice').assoc('age', 31).assoc('city', 'NYC').assoc('country', 'USA')
+        m3 = PersistentDict().assoc('name', 'Alice').assoc('age', 31).assoc('city', 'NYC').assoc('country', 'USA')
         m4 = m3.dissoc('city')
 
         # New map doesn't have the key
@@ -97,19 +97,19 @@ class TestPersistentMapImmutability:
 
     def test_dissoc_nonexistent_key(self):
         """Test that dissoc on nonexistent key returns same map."""
-        m = PersistentMap().assoc('a', 1)
+        m = PersistentDict().assoc('a', 1)
         m2 = m.dissoc('nonexistent')
 
         assert len(m2) == 1
         assert 'a' in m2
 
 
-class TestPersistentMapIteration:
+class TestPersistentDictIteration:
     """Test iteration methods."""
 
     def test_iteration_over_keys(self):
         """Test iterating over keys."""
-        m = PersistentMap().assoc('name', 'Alice').assoc('age', 31).assoc('city', 'NYC').assoc('country', 'USA')
+        m = PersistentDict().assoc('name', 'Alice').assoc('age', 31).assoc('city', 'NYC').assoc('country', 'USA')
 
         keys = set(m)
         assert keys == {'name', 'age', 'city', 'country'}
@@ -121,7 +121,7 @@ class TestPersistentMapIteration:
 
     def test_items_iteration(self):
         """Test iterating over items (key-value pairs)."""
-        m = PersistentMap().assoc('name', 'Alice').assoc('age', 31).assoc('city', 'NYC')
+        m = PersistentDict().assoc('name', 'Alice').assoc('age', 31).assoc('city', 'NYC')
 
         items = dict(m.items())
         assert items == {'name': 'Alice', 'age': 31, 'city': 'NYC'}
@@ -132,25 +132,25 @@ class TestPersistentMapIteration:
 
     def test_keys_method(self):
         """Test keys() method."""
-        m = PersistentMap().assoc('x', 1).assoc('y', 2).assoc('z', 3)
+        m = PersistentDict().assoc('x', 1).assoc('y', 2).assoc('z', 3)
 
         keys = set(m.keys())
         assert keys == {'x', 'y', 'z'}
 
     def test_values_method(self):
         """Test values() method."""
-        m = PersistentMap().assoc('x', 1).assoc('y', 2).assoc('z', 3)
+        m = PersistentDict().assoc('x', 1).assoc('y', 2).assoc('z', 3)
 
         values = sorted(m.values())
         assert values == [1, 2, 3]
 
 
-class TestPersistentMapFactoryMethods:
+class TestPersistentDictFactoryMethods:
     """Test factory methods and creation."""
 
     def test_from_dict(self):
         """Test creating from a dictionary."""
-        m = PersistentMap.from_dict({'x': 1, 'y': 2, 'z': 3})
+        m = PersistentDict.from_dict({'x': 1, 'y': 2, 'z': 3})
 
         assert len(m) == 3
         assert m.get('x') == 1
@@ -159,7 +159,7 @@ class TestPersistentMapFactoryMethods:
 
     def test_create_factory_method(self):
         """Test create() factory method with keyword arguments."""
-        m = PersistentMap.create(a=1, b=2, c=3)
+        m = PersistentDict.create(a=1, b=2, c=3)
 
         assert len(m) == 3
         assert m.get('a') == 1
@@ -167,7 +167,7 @@ class TestPersistentMapFactoryMethods:
         assert m.get('c') == 3
 
 
-class TestPersistentMapStructuralSharing:
+class TestPersistentDictStructuralSharing:
     """Test structural sharing and efficiency."""
 
     def test_structural_sharing_large_scale(self):
@@ -176,7 +176,7 @@ class TestPersistentMapStructuralSharing:
         Creating variants should be efficient due to structural sharing.
         """
         # Create base map with 1000 entries
-        base = PersistentMap()
+        base = PersistentDict()
         for i in range(1000):
             base = base.assoc(f'key{i}', i)
 
@@ -199,12 +199,12 @@ class TestPersistentMapStructuralSharing:
         assert 'extra2' not in base
 
 
-class TestPersistentMapEdgeCases:
+class TestPersistentDictEdgeCases:
     """Test edge cases and error conditions."""
 
     def test_getitem_keyerror(self):
         """Test that bracket notation raises KeyError for missing keys."""
-        m = PersistentMap().assoc('a', 1)
+        m = PersistentDict().assoc('a', 1)
 
         with pytest.raises(KeyError) as exc_info:
             _ = m['nonexistent']
@@ -212,10 +212,10 @@ class TestPersistentMapEdgeCases:
         assert 'nonexistent' in str(exc_info.value)
 
     def test_equality(self):
-        """Test equality between PersistentMaps."""
-        m1 = PersistentMap().assoc('a', 1).assoc('b', 2)
-        m2 = PersistentMap().assoc('b', 2).assoc('a', 1)
-        m3 = PersistentMap().assoc('a', 1).assoc('b', 3)
+        """Test equality between PersistentDicts."""
+        m1 = PersistentDict().assoc('a', 1).assoc('b', 2)
+        m2 = PersistentDict().assoc('b', 2).assoc('a', 1)
+        m3 = PersistentDict().assoc('a', 1).assoc('b', 3)
 
         # Same content, equal
         assert m1 == m2
@@ -228,7 +228,7 @@ class TestPersistentMapEdgeCases:
 
     def test_empty_map_operations(self):
         """Test operations on empty map."""
-        m = PersistentMap()
+        m = PersistentDict()
 
         assert len(m) == 0
         assert list(m) == []
@@ -240,7 +240,7 @@ class TestPersistentMapEdgeCases:
 
     def test_single_element_map(self):
         """Test map with single element."""
-        m = PersistentMap().assoc('only', 'value')
+        m = PersistentDict().assoc('only', 'value')
 
         assert len(m) == 1
         assert 'only' in m
@@ -253,7 +253,7 @@ class TestPersistentMapEdgeCases:
 
     def test_chaining_operations(self):
         """Test chaining multiple operations."""
-        m = (PersistentMap()
+        m = (PersistentDict()
              .assoc('a', 1)
              .assoc('b', 2)
              .assoc('c', 3)
@@ -268,7 +268,7 @@ class TestPersistentMapEdgeCases:
 
     def test_none_as_value(self):
         """Test that None can be used as a value."""
-        m = PersistentMap().assoc('key', None)
+        m = PersistentDict().assoc('key', None)
 
         assert 'key' in m
         assert m['key'] is None
@@ -277,7 +277,7 @@ class TestPersistentMapEdgeCases:
 
     def test_various_key_types(self):
         """Test different types of keys."""
-        m = (PersistentMap()
+        m = (PersistentDict()
              .assoc('string', 1)
              .assoc(42, 2)
              .assoc(3.14, 3)
@@ -290,10 +290,10 @@ class TestPersistentMapEdgeCases:
 
     def test_repr_with_content(self):
         """Test string representation with content."""
-        m = PersistentMap().assoc('a', 1)
+        m = PersistentDict().assoc('a', 1)
         repr_str = repr(m)
 
-        assert 'PersistentMap' in repr_str
+        assert 'PersistentDict' in repr_str
         assert "'a'" in repr_str or '"a"' in repr_str
         assert '1' in repr_str
 
@@ -301,7 +301,7 @@ class TestPersistentMapEdgeCases:
         """
         Regression test for iterator dangling pointer bug.
 
-        The bug: creating an iterator from a temporary PersistentMap
+        The bug: creating an iterator from a temporary PersistentDict
         (e.g., (pm1 | pm2).items()) caused a segfault because the
         temporary was destroyed before the iterator was consumed,
         leaving the iterator with a dangling pointer to the root node.
@@ -311,8 +311,8 @@ class TestPersistentMapEdgeCases:
         """
         d = {x: x for x in range(10000)}
         d2 = {y: y for y in range(5000, 15000, 1)}
-        pm1 = PersistentMap.from_dict(d)
-        pm2 = PersistentMap.from_dict(d2)
+        pm1 = PersistentDict.from_dict(d)
+        pm2 = PersistentDict.from_dict(d2)
 
         # This used to crash with exit code 139 (SIGSEGV)
         a = sorted((d | d2).items())
@@ -337,8 +337,8 @@ class TestPersistentMapEdgeCases:
         The fix: Count actual entries after merging by iterating the merged tree.
         """
         # Create maps with overlapping keys
-        pm1 = PersistentMap.from_dict({x: x for x in range(10000)})
-        pm2 = PersistentMap.from_dict({y: y for y in range(5000, 15000)})
+        pm1 = PersistentDict.from_dict({x: x for x in range(10000)})
+        pm2 = PersistentDict.from_dict({y: y for y in range(5000, 15000)})
         
         # Merge them
         merged = pm1 | pm2

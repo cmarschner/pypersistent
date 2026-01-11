@@ -224,7 +224,22 @@ PYBIND11_MODULE(pypersistent, m) {
                    "Example:\n"
                    "    m = PersistentDict.create(a=1, b=2, c=3)\n\n"
                    "Returns:\n"
-                   "    A new PersistentDict containing the keyword arguments");
+                   "    A new PersistentDict containing the keyword arguments")
+
+        // Pickle support
+        .def(py::pickle(
+            [](const PersistentDict &p) { // __getstate__
+                return p.itemsList();  // Return list of (key, value) tuples
+            },
+            [](py::list items) { // __setstate__
+                py::dict d;
+                for (auto item : items) {
+                    py::tuple t = item.cast<py::tuple>();
+                    d[t[0]] = t[1];
+                }
+                return PersistentDict::fromDict(d);
+            }
+        ));
 
     // PersistentArrayMap iterators
     py::class_<ArrayMapKeyIterator>(m, "ArrayMapKeyIterator")
@@ -703,7 +718,17 @@ PYBIND11_MODULE(pypersistent, m) {
                    "Example:\n"
                    "    s = PersistentSet.create(1, 2, 3)\n\n"
                    "Returns:\n"
-                   "    A new PersistentSet containing the arguments");
+                   "    A new PersistentSet containing the arguments")
+
+        // Pickle support
+        .def(py::pickle(
+            [](const PersistentSet &p) { // __getstate__
+                return p.list();  // Return list of elements
+            },
+            [](py::list items) { // __setstate__
+                return PersistentSet::fromList(items);
+            }
+        ));
 
     // PersistentList iterator
     py::class_<VectorIterator>(m, "VectorIterator")
@@ -906,7 +931,21 @@ PYBIND11_MODULE(pypersistent, m) {
                    "Example:\n"
                    "    v = PersistentList.create(1, 2, 3, 4, 5)\n\n"
                    "Returns:\n"
-                   "    A new PersistentList containing the arguments");
+                   "    A new PersistentList containing the arguments")
+
+        // Pickle support
+        .def(py::pickle(
+            [](const PersistentList &p) { // __getstate__
+                py::list result;
+                for (size_t i = 0; i < p.size(); i++) {
+                    result.append(p.nth(i));
+                }
+                return result;
+            },
+            [](py::list items) { // __setstate__
+                return PersistentList::fromList(items);
+            }
+        ));
 
     // PersistentSortedDict iterator
     py::class_<TreeMapIteratorWrapper>(m, "TreeMapIteratorWrapper")
@@ -1348,7 +1387,22 @@ PYBIND11_MODULE(pypersistent, m) {
                    "    m = PersistentSortedDict.create(a=1, b=2, c=3)\n\n"
                    "Returns:\n"
                    "    A new PersistentSortedDict containing the keyword arguments\n\n"
-                   "Note: Keys must support < comparison");
+                   "Note: Keys must support < comparison")
+
+        // Pickle support
+        .def(py::pickle(
+            [](const PersistentSortedDict &p) { // __getstate__
+                return p.items();  // Return list of (key, value) tuples
+            },
+            [](py::list items) { // __setstate__
+                py::dict d;
+                for (auto item : items) {
+                    py::tuple t = item.cast<py::tuple>();
+                    d[t[0]] = t[1];
+                }
+                return PersistentSortedDict::fromDict(d);
+            }
+        ));
 
     // Module-level documentation
     m.attr("__version__") = "2.0.0b1";

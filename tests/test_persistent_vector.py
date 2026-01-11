@@ -430,5 +430,60 @@ class TestPersistentListSpecialCases:
         assert v2.list() == [1, 2, 3, 4, 5]
 
 
+class TestPersistentListPickle:
+    """Test pickle serialization for PersistentList."""
+
+    def test_pickle_empty(self):
+        """Test pickling an empty PersistentList."""
+        import pickle
+        v = PersistentList()
+        pickled = pickle.dumps(v)
+        restored = pickle.loads(pickled)
+        assert restored == v
+        assert len(restored) == 0
+
+    def test_pickle_small(self):
+        """Test pickling a small PersistentList."""
+        import pickle
+        v = PersistentList.create(1, 2, 3, 4, 5)
+        pickled = pickle.dumps(v)
+        restored = pickle.loads(pickled)
+        assert restored == v
+        assert restored.list() == [1, 2, 3, 4, 5]
+
+    def test_pickle_large(self):
+        """Test pickling a large PersistentList."""
+        import pickle
+        v = PersistentList.from_list(list(range(1000)))
+        pickled = pickle.dumps(v)
+        restored = pickle.loads(pickled)
+        assert restored == v
+        assert len(restored) == 1000
+        assert restored[500] == 500
+
+    def test_pickle_various_types(self):
+        """Test pickling a list with various value types."""
+        import pickle
+        v = PersistentList.from_list([
+            42,
+            3.14,
+            'hello',
+            [1, 2, 3],
+            {'nested': 'value'},
+            None,
+            True
+        ])
+        pickled = pickle.dumps(v)
+        restored = pickle.loads(pickled)
+        assert restored == v
+        assert restored[0] == 42
+        assert restored[1] == 3.14
+        assert restored[2] == 'hello'
+        assert restored[3] == [1, 2, 3]
+        assert restored[4] == {'nested': 'value'}
+        assert restored[5] is None
+        assert restored[6] is True
+
+
 if __name__ == '__main__':
     pytest.main([__file__, '-v'])

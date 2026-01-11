@@ -368,5 +368,59 @@ class TestPersistentSetEdgeCases:
         assert s3 == s4
 
 
+class TestPersistentSetPickle:
+    """Test pickle serialization for PersistentSet."""
+
+    def test_pickle_empty(self):
+        """Test pickling an empty PersistentSet."""
+        import pickle
+        s = PersistentSet()
+        pickled = pickle.dumps(s)
+        restored = pickle.loads(pickled)
+        assert restored == s
+        assert len(restored) == 0
+
+    def test_pickle_small(self):
+        """Test pickling a small PersistentSet."""
+        import pickle
+        s = PersistentSet.create(1, 2, 3, 4, 5)
+        pickled = pickle.dumps(s)
+        restored = pickle.loads(pickled)
+        assert restored == s
+        assert len(restored) == 5
+        assert 3 in restored
+
+    def test_pickle_large(self):
+        """Test pickling a large PersistentSet."""
+        import pickle
+        s = PersistentSet.from_list(list(range(1000)))
+        pickled = pickle.dumps(s)
+        restored = pickle.loads(pickled)
+        assert restored == s
+        assert len(restored) == 1000
+        assert 500 in restored
+
+    def test_pickle_various_types(self):
+        """Test pickling a set with various value types."""
+        import pickle
+        s = PersistentSet.from_list([
+            42,
+            3.14,
+            'hello',
+            (1, 2, 3),
+            True,
+            None
+        ])
+        pickled = pickle.dumps(s)
+        restored = pickle.loads(pickled)
+        assert restored == s
+        assert 42 in restored
+        assert 3.14 in restored
+        assert 'hello' in restored
+        assert (1, 2, 3) in restored
+        assert True in restored
+        assert None in restored
+
+
 if __name__ == '__main__':
     pytest.main([__file__, '-v'])

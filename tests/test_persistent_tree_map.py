@@ -647,12 +647,73 @@ class TestPersistentSortedDictMergeOperator:
     def test_merge_with_incompatible_types_raises(self):
         """Test that merging with non-mapping raises TypeError."""
         tm = PersistentSortedDict().assoc(1, 'a')
-        
+
         with pytest.raises(TypeError):
             _ = tm | "not a mapping"
-        
+
         with pytest.raises(TypeError):
             _ = tm | 123
-        
+
         with pytest.raises(TypeError):
             _ = tm | [1, 2, 3]
+
+
+class TestPersistentSortedDictPickle:
+    """Test pickle serialization for PersistentSortedDict."""
+
+    def test_pickle_empty(self):
+        """Test pickling an empty PersistentSortedDict."""
+        import pickle
+        m = PersistentSortedDict()
+        pickled = pickle.dumps(m)
+        restored = pickle.loads(pickled)
+        assert restored == m
+        assert len(restored) == 0
+
+    def test_pickle_small(self):
+        """Test pickling a small PersistentSortedDict."""
+        import pickle
+        m = PersistentSortedDict.from_dict({3: 'c', 1: 'a', 2: 'b'})
+        pickled = pickle.dumps(m)
+        restored = pickle.loads(pickled)
+        assert restored == m
+        assert list(restored.keys()) == [1, 2, 3]  # Should be sorted
+        assert restored[2] == 'b'
+
+    def test_pickle_large(self):
+        """Test pickling a large PersistentSortedDict."""
+        import pickle
+        m = PersistentSortedDict.from_dict({i: f'val{i}' for i in range(1000)})
+        pickled = pickle.dumps(m)
+        restored = pickle.loads(pickled)
+        assert restored == m
+        assert len(restored) == 1000
+        assert restored[500] == 'val500'
+        # Verify order is preserved
+        keys = list(restored.keys())
+        assert keys == sorted(keys)
+
+    def test_pickle_various_types(self):
+        """Test pickling a sorted dict with various value types."""
+        import pickle
+        m = PersistentSortedDict.from_dict({
+            1: 42,
+            2: 3.14,
+            3: 'hello',
+            4: [1, 2, 3],
+            5: {'nested': 'value'},
+            6: None,
+            7: True
+        })
+        pickled = pickle.dumps(m)
+        restored = pickle.loads(pickled)
+        assert restored == m
+        assert restored[1] == 42
+        assert restored[2] == 3.14
+        assert restored[3] == 'hello'
+        assert restored[4] == [1, 2, 3]
+        assert restored[5] == {'nested': 'value'}
+        assert restored[6] is None
+        assert restored[7] is True
+        # Verify order
+        assert list(restored.keys()) == [1, 2, 3, 4, 5, 6, 7]

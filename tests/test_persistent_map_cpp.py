@@ -362,3 +362,77 @@ class TestPersistentDictEdgeCases:
         # Verify first and last items
         assert sorted_items[0] == (0, 0)
         assert sorted_items[-1] == (14999, 14999)
+
+
+class TestPersistentDictPickle:
+    """Test pickle serialization for PersistentDict."""
+
+    def test_pickle_empty(self):
+        """Test pickling an empty PersistentDict."""
+        import pickle
+        m = PersistentDict()
+        pickled = pickle.dumps(m)
+        restored = pickle.loads(pickled)
+        assert restored == m
+        assert len(restored) == 0
+
+    def test_pickle_small(self):
+        """Test pickling a small PersistentDict."""
+        import pickle
+        m = PersistentDict.create(a=1, b=2, c=3)
+        pickled = pickle.dumps(m)
+        restored = pickle.loads(pickled)
+        assert restored == m
+        assert restored['a'] == 1
+        assert restored['b'] == 2
+        assert restored['c'] == 3
+
+    def test_pickle_large(self):
+        """Test pickling a large PersistentDict."""
+        import pickle
+        m = PersistentDict.from_dict({i: f'val{i}' for i in range(1000)})
+        pickled = pickle.dumps(m)
+        restored = pickle.loads(pickled)
+        assert restored == m
+        assert len(restored) == 1000
+        assert restored[500] == 'val500'
+
+    def test_pickle_nested(self):
+        """Test pickling nested persistent structures."""
+        import pickle
+        from pypersistent import PersistentList
+
+        m = PersistentDict.create(
+            name='test',
+            values=PersistentList.create(1, 2, 3),
+            count=42
+        )
+        pickled = pickle.dumps(m)
+        restored = pickle.loads(pickled)
+        assert restored == m
+        assert restored['name'] == 'test'
+        assert restored['values'] == PersistentList.create(1, 2, 3)
+        assert restored['count'] == 42
+
+    def test_pickle_various_types(self):
+        """Test pickling a dict with various value types."""
+        import pickle
+        m = PersistentDict.from_dict({
+            'int': 42,
+            'float': 3.14,
+            'str': 'hello',
+            'list': [1, 2, 3],
+            'dict': {'nested': 'value'},
+            'none': None,
+            'bool': True
+        })
+        pickled = pickle.dumps(m)
+        restored = pickle.loads(pickled)
+        assert restored == m
+        assert restored['int'] == 42
+        assert restored['float'] == 3.14
+        assert restored['str'] == 'hello'
+        assert restored['list'] == [1, 2, 3]
+        assert restored['dict'] == {'nested': 'value'}
+        assert restored['none'] is None
+        assert restored['bool'] is True

@@ -142,11 +142,11 @@ m2 = m1.set('new_key', 'new_value')  # Shares 99.99% of structure with m1
 | Operation | pypersistent | Python dict | Speedup |
 |-----------|--------------|-------------|---------|
 | **Structural Sharing (100 variants of 10K dict)** | **74µs** | **1.79ms** | **24x faster** 🚀 |
-| **Structural Sharing (100 variants of 1M dict)** | **158µs** | **157s** | **3000x faster** 🚀 |
+| **Structural Sharing (100 variants of 1M dict)** | **158µs** | **517ms** | **3271x faster** 🚀 |
 | Single lookup | 776µs (1K ops) | 427µs | 1.8x slower |
 | Construction (1M elements) | 2.74s | 299ms | 9x slower |
 
-**Key insight**: Creating multiple versions is where pypersistent excels - up to **3000x faster** than copying dicts.
+**Key insight**: Creating multiple versions through structural sharing is **24-3271x faster** than copying dicts, with the advantage growing dramatically for larger collections.
 
 #### PersistentList vs list
 

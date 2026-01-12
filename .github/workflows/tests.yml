@@ -40,8 +40,8 @@ jobs:
       - name: Test import and basic functionality
         run: |
           python -c "
-          from pypersistent import PersistentMap
-          m = PersistentMap.create(a=1, b=2, c=3)
+          from pypersistent import PersistentDict
+          m = PersistentDict.create(a=1, b=2, c=3)
           assert len(m) == 3
           assert m['a'] == 1
           m2 = m.set('d', 4)

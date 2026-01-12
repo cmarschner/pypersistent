@@ -62,8 +62,8 @@ jobs:
 
           # Test the built wheels
           CIBW_TEST_COMMAND: >
-            python -c "from pypersistent import PersistentMap;
-            m = PersistentMap.create(a=1, b=2);
+            python -c "from pypersistent import PersistentDict;
+            m = PersistentDict.create(a=1, b=2);
             assert m.get('a') == 1;
             assert m['b'] == 2;
             assert len(m) == 2;

@@ -1055,13 +1055,39 @@ PYBIND11_MODULE(pypersistent, m) {
              "    A new PersistentSortedDict with the key set")
 
         // Python protocols
-        .def("__getitem__", &PersistentSortedDict::pyGetItem,
+        .def("__getitem__",
+             [](const PersistentSortedDict& m, py::object key) -> py::object {
+                 // Handle slice for range queries
+                 if (py::isinstance<py::slice>(key)) {
+                     py::slice slice = key.cast<py::slice>();
+                     // Extract start and stop from slice (step not supported)
+                     py::object start_obj = slice.attr("start");
+                     py::object stop_obj = slice.attr("stop");
+                     py::object step_obj = slice.attr("step");
+
+                     // Check that step is None or 1
+                     if (!step_obj.is_none() && step_obj.cast<int>() != 1) {
+                         throw std::invalid_argument("PersistentSortedDict slicing does not support step != 1");
+                     }
+
+                     // Both start and stop must be provided for range queries
+                     if (start_obj.is_none() || stop_obj.is_none()) {
+                         throw std::invalid_argument("PersistentSortedDict slicing requires both start and stop keys");
+                     }
+
+                     // Call subseq with the start and stop keys
+                     return py::cast(m.subseq(start_obj, stop_obj));
+                 }
+
+                 // Handle regular key lookup
+                 return m.pyGetItem(key);
+             },
              py::arg("key"),
              "Get item using bracket notation. Raises KeyError if not found.\n\n"
              "Args:\n"
-             "    key: The key to look up\n\n"
+             "    key: The key to look up, or a slice for range queries\n\n"
              "Returns:\n"
-             "    The value associated with key\n\n"
+             "    The value associated with key, or a PersistentSortedDict for slices\n\n"
              "Raises:\n"
              "    KeyError: If key not found")
 

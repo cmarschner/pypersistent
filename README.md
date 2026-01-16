@@ -11,6 +11,7 @@ A high-performance collection of persistent (immutable) data structures for Pyth
 - **Python 3.13+ Free-Threading Ready**: Lock-free design with atomic reference counting for true parallelism
 - **Memory Efficient**: Structural sharing minimizes memory overhead
 - **Dual Interface**: Both functional (Clojure-style) and Pythonic APIs
+- **Pickle Support**: Native serialization for all data structures
 
 ## Data Structures
 
@@ -44,9 +45,9 @@ PyPersistent provides five core persistent data structures:
   m = PersistentSortedDict.from_dict({3: 'c', 1: 'a', 2: 'b'})
   list(m.keys())  # [1, 2, 3] - always sorted
 
-  # Range queries
-  sub = m.subseq(start=1, end=2, start_inclusive=True, end_inclusive=False)
-  list(sub.keys())  # [1]
+  # Range queries [start, end) - start inclusive, end exclusive
+  sub = m.subseq(1, 3)  # or m[1:3]
+  list(sub.keys())  # [1, 2]
 
   # Min/max
   m.first()  # (1, 'a')

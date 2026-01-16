@@ -293,7 +293,7 @@ NodeBase* BitmapNode::createNode(uint32_t shift,
 // CollisionNode Implementation
 //=============================================================================
 
-py::object CollisionNode::get(uint32_t shift, uint32_t hash,
+py::object CollisionNode::get(uint32_t /*shift*/, uint32_t /*hash*/,
                               const py::object& key, const py::object& notFound) const {
     for (Entry* entry : *entries_) {
         if (pmutils::keysEqual(entry->key, key)) {
@@ -303,7 +303,7 @@ py::object CollisionNode::get(uint32_t shift, uint32_t hash,
     return notFound;
 }
 
-NodeBase* CollisionNode::assoc(uint32_t shift, uint32_t hash,
+NodeBase* CollisionNode::assoc(uint32_t /*shift*/, uint32_t /*hash*/,
                                const py::object& key, const py::object& val) const {
     // Check if key already exists
     for (size_t i = 0; i < entries_->size(); ++i) {
@@ -329,7 +329,7 @@ NodeBase* CollisionNode::assoc(uint32_t shift, uint32_t hash,
     return new CollisionNode(hash_, newEntries);
 }
 
-NodeBase* CollisionNode::dissoc(uint32_t shift, uint32_t hash,
+NodeBase* CollisionNode::dissoc(uint32_t /*shift*/, uint32_t /*hash*/,
                                 const py::object& key) const {
     for (size_t i = 0; i < entries_->size(); ++i) {
         if (pmutils::keysEqual((*entries_)[i]->key, key)) {

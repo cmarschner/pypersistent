@@ -837,7 +837,7 @@ PYBIND11_MODULE(pypersistent, m) {
                  }
 
                  throw py::type_error("PersistentList indices must be integers or slices, not " +
-                                     std::string(py::str(key.get_type())));
+                                     std::string(py::str(py::type::of(key))));
              },
              py::arg("key"),
              "Get item using bracket notation. Supports integers (negative allowed) and slices.\n\n"

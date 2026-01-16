@@ -38,27 +38,6 @@ TreeNode* TreeNode::clone() const {
     return newNode;
 }
 
-// Helper to delete a tree with refcount=0 nodes
-// Children were addRef'd during cloning, so normal destructor will release them correctly
-static void deleteTreeWithRefcountZero(TreeNode* node) {
-    if (!node) return;
-
-    // Recursively process children first (they might also need cleanup)
-    TreeNode* left = node->left;
-    TreeNode* right = node->right;
-
-    // Nullify to prevent destructor from releasing them
-    node->left = nullptr;
-    node->right = nullptr;
-
-    // Delete this node
-    delete node;
-
-    // Now recursively delete children
-    if (left) deleteTreeWithRefcountZero(left);
-    if (right) deleteTreeWithRefcountZero(right);
-}
-
 // PersistentSortedDict implementation
 
 PersistentSortedDict::PersistentSortedDict()
